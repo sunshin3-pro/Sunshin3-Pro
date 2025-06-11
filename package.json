@@ -1,0 +1,61 @@
+{
+  "name": "sunshin3-pro",
+  "version": "1.0.0",
+  "description": "Professionelle Rechnungssoftware mit Mehrsprachigkeit",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build-win": "electron-builder --win",
+    "build-installer": "electron-builder --win nsis",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": ["invoice", "billing", "electron", "desktop"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "^9.2.2",
+    "electron-store": "^8.1.0",
+    "i18next": "^23.7.16",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "nodemailer": "^6.9.8",
+    "pdfkit": "^0.14.0",
+    "uuid": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.sunshin3.pro",
+    "productName": "Sunshin3 Pro",
+    "artifactName": "Sunshin3Pro-Setup-${version}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "views/**/*",
+      "assets/**/*",
+      "locales/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sunshin3 Pro",
+      "installerLanguages": ["de", "en", "fr", "es", "it"],
+      "warningsAsErrors": false,
+      "packElevateHelper": false
+    }
+  }
+}

@@ -1,0 +1,296 @@
+{
+  "app": {
+    "name": "Sunshin3 Pro",
+    "title": "Software de facturación profesional"
+  },
+  "login": {
+    "title": "Iniciar sesión",
+    "subtitle": "Bienvenido de nuevo",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "button": "Entrar",
+    "adminMode": "Modo admin",
+    "enterCode": "Por favor, ingrese su código de admin:",
+    "verifyCode": "Verificar código",
+    "cancel": "Cancelar",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "register": "Registrarse",
+    "invalidCredentials": "Credenciales inválidas",
+    "wrongCode": "Código incorrecto",
+    "accountLocked": "Cuenta temporalmente bloqueada"
+  },
+  "register": {
+    "title": "Registro",
+    "subtitle": "Crea tu cuenta",
+    "companyName": "Nombre de la empresa",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "phone": "Teléfono",
+    "address": "Dirección",
+    "city": "Ciudad",
+    "postalCode": "Código postal",
+    "country": "País",
+    "terms": "Acepto los términos de servicio",
+    "button": "Registrarse",
+    "alreadyHaveAccount": "¿Ya tienes cuenta?",
+    "login": "Iniciar sesión"
+  },
+  "nav": {
+    "dashboard": "Inicio",
+    "invoices": "Facturas",
+    "customers": "Clientes",
+    "products": "Productos",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "¡Bienvenido de nuevo, {name}!",
+    "overview": "Resumen",
+    "totalInvoices": "Facturas totales",
+    "openInvoices": "Facturas abiertas",
+    "revenue": "Ingresos",
+    "customers": "Clientes",
+    "recentInvoices": "Facturas recientes",
+    "quickActions": "Acciones rápidas",
+    "newInvoice": "Nueva factura",
+    "newCustomer": "Nuevo cliente",
+    "newProduct": "Nuevo producto"
+  },
+  "invoices": {
+    "title": "Facturas",
+    "new": "Nueva factura",
+    "search": "Buscar facturas…",
+    "filter": "Filtrar",
+    "status": {
+      "all": "Todas",
+      "draft": "Borrador",
+      "sent": "Enviada",
+      "paid": "Pagada",
+      "overdue": "Vencida",
+      "cancelled": "Cancelada"
+    },
+    "table": {
+      "number": "Número",
+      "customer": "Cliente",
+      "date": "Fecha",
+      "dueDate": "Vencimiento",
+      "amount": "Importe",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "actions": {
+      "view": "Ver",
+      "edit": "Editar",
+      "duplicate": "Duplicar",
+      "delete": "Eliminar",
+      "sendEmail": "Enviar por correo",
+      "downloadPDF": "Descargar PDF"
+    }
+  },
+  "invoice": {
+    "title": "Factura",
+    "details": "Detalles de la factura",
+    "customer": "Cliente",
+    "selectCustomer": "Seleccionar cliente",
+    "invoiceNumber": "Número de factura",
+    "invoiceDate": "Fecha de factura",
+    "dueDate": "Fecha de vencimiento",
+    "items": "Conceptos",
+    "addItem": "Agregar concepto",
+    "description": "Descripción",
+    "quantity": "Cantidad",
+    "price": "Precio",
+    "tax": "IVA",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "taxAmount": "Importe IVA",
+    "grandTotal": "Total general",
+    "notes": "Notas",
+    "paymentTerms": "Condiciones de pago",
+    "save": "Guardar",
+    "saveAndSend": "Guardar y enviar"
+  },
+  "customers": {
+    "title": "Clientes",
+    "new": "Nuevo cliente",
+    "search": "Buscar clientes…",
+    "type": {
+      "all": "Todos",
+      "private": "Particular",
+      "business": "Empresa"
+    },
+    "table": {
+      "name": "Nombre",
+      "email": "Correo",
+      "phone": "Teléfono",
+      "type": "Tipo",
+      "created": "Creado",
+      "actions": "Acciones"
+    }
+  },
+  "customer": {
+    "title": "Cliente",
+    "details": "Detalles del cliente",
+    "type": "Tipo de cliente",
+    "private": "Cliente particular",
+    "business": "Cliente empresa",
+    "companyName": "Nombre de la empresa",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "email": "Correo electrónico",
+    "phone": "Teléfono",
+    "address": "Dirección",
+    "city": "Ciudad",
+    "postalCode": "Código postal",
+    "country": "País",
+    "taxId": "NIF/CIF",
+    "notes": "Notas",
+    "save": "Guardar"
+  },
+  "products": {
+    "title": "Productos y servicios",
+    "new": "Nuevo producto",
+    "search": "Buscar productos…",
+    "type": {
+      "all": "Todos",
+      "product": "Producto",
+      "service": "Servicio"
+    },
+    "table": {
+      "name": "Nombre",
+      "type": "Tipo",
+      "price": "Precio",
+      "tax": "IVA",
+      "active": "Activo",
+      "actions": "Acciones"
+    }
+  },
+  "product": {
+    "title": "Producto",
+    "details": "Detalles del producto",
+    "type": "Tipo",
+    "product": "Producto",
+    "service": "Servicio",
+    "name": "Nombre",
+    "description": "Descripción",
+    "sku": "SKU",
+    "price": "Precio",
+    "taxRate": "Tipo de IVA",
+    "unit": "Unidad",
+    "category": "Categoría",
+    "active": "Activo",
+    "save": "Guardar"
+  },
+  "settings": {
+    "title": "Configuración",
+    "tabs": {
+      "general": "General",
+      "company": "Empresa",
+      "invoice": "Factura",
+      "email": "Correo",
+      "subscription": "Suscripción",
+      "backup": "Copias de seguridad"
+    },
+    "general": {
+      "language": "Idioma",
+      "currency": "Moneda",
+      "dateFormat": "Formato de fecha",
+      "timeZone": "Zona horaria"
+    },
+    "company": {
+      "name": "Nombre de la empresa",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "address": "Dirección",
+      "taxId": "NIF/CIF",
+      "logo": "Logotipo",
+      "uploadLogo": "Subir logotipo"
+    },
+    "invoice": {
+      "prefix": "Prefijo de factura",
+      "nextNumber": "Siguiente número",
+      "dueDays": "Días de pago",
+      "footer": "Pie de página"
+    },
+    "email": {
+      "smtpHost": "Servidor SMTP",
+      "smtpPort": "Puerto",
+      "smtpUser": "Usuario SMTP",
+      "smtpPassword": "Contraseña SMTP",
+      "smtpSecure": "Usar SSL/TLS",
+      "testConnection": "Probar conexión"
+    },
+    "subscription": {
+      "current": "Suscripción actual",
+      "trial": "Prueba",
+      "basic": "Básico",
+      "pro": "Profesional",
+      "expires": "Expira el",
+      "upgrade": "Mejorar a Pro",
+      "limits": "Límites",
+      "invoicesLimit": "Facturas",
+      "customersLimit": "Clientes",
+      "productsLimit": "Productos"
+    }
+  },
+  "admin": {
+    "title": "Panel admin",
+    "dashboard": "Resumen",
+    "users": "Usuarios",
+    "admins": "Administradores",
+    "licenses": "Licencias",
+    "system": "Sistema",
+    "activities": "Actividades",
+    "addAdmin": "Añadir admin",
+    "email": "Correo electrónico",
+    "code": "Código",
+    "role": "Rol",
+    "superAdmin": "Super‑admin",
+    "admin": "Admin",
+    "lastLogin": "Último acceso",
+    "actions": "Acciones",
+    "generateCode": "Generar código",
+    "deleteAdmin": "Eliminar admin",
+    "confirmDelete": "¿Estás seguro?"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "import": "Importar",
+    "yes": "Sí",
+    "no": "No",
+    "loading": "Cargando…",
+    "error": "Error",
+    "success": "Éxito",
+    "warning": "Advertencia",
+    "info": "Información"
+  },
+  "errors": {
+    "required": "Este campo es obligatorio",
+    "email": "Correo electrónico inválido",
+    "minLength": "Se requieren al menos {min} caracteres",
+    "maxLength": "Máximo {max} caracteres permitidos",
+    "passwordMatch": "Las contraseñas no coinciden",
+    "networkError": "Error de red",
+    "unauthorized": "No autorizado",
+    "notFound": "No encontrado"
+  },
+  "success": {
+    "saved": "Guardado con éxito",
+    "deleted": "Eliminado con éxito",
+    "sent": "Enviado con éxito",
+    "copied": "Copiado al portapapeles"
+  }
+}

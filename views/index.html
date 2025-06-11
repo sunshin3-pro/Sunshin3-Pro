@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunshin3 Invoice Pro</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+    <link rel="stylesheet" href="../assets/modern-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Custom Titlebar -->
+    <div class="titlebar">
+        <div class="titlebar-drag">
+            <div class="titlebar-title">
+                <span>Sunshin3 Invoice Pro</span>
+            </div>
+        </div>
+        <div class="titlebar-controls">
+            <button class="titlebar-btn" onclick="window.api.minimizeWindow()">
+                <i class="fas fa-minus"></i>
+            </button>
+            <button class="titlebar-btn" onclick="window.api.maximizeWindow()">
+                <i class="fas fa-square"></i>
+            </button>
+            <button class="titlebar-btn titlebar-close" onclick="window.api.closeWindow()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sprachauswahl (Erste Installation) -->
+    <div id="languageSelection" class="language-selection hidden">
+        <div class="language-box">
+            <h1>Willkommen bei Sunshin3 Invoice Pro</h1>
+            <h2>Welcome to Sunshin3 Invoice Pro</h2>
+            <p>Bitte wählen Sie Ihre Sprache / Please select your language</p>
+            
+            <div class="language-grid">
+                <button class="language-btn" onclick="selectLanguage('de')">
+                    <img src="../assets/flags/de.svg" alt="Deutsch">
+                    <span>Deutsch</span>
+                </button>
+                <button class="language-btn" onclick="selectLanguage('en')">
+                    <img src="../assets/flags/en.svg" alt="English">
+                    <span>English</span>
+                </button>
+                <button class="language-btn" onclick="selectLanguage('fr')">
+                    <img src="../assets/flags/fr.svg" alt="Français">
+                    <span>Français</span>
+                </button>
+                <button class="language-btn" onclick="selectLanguage('es')">
+                    <img src="../assets/flags/es.svg" alt="Español">
+                    <span>Español</span>
+                </button>
+                <button class="language-btn" onclick="selectLanguage('it')">
+                    <img src="../assets/flags/it.svg" alt="Italiano">
+                    <span>Italiano</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="animated-bg">
+            <div class="gradient-1"></div>
+            <div class="gradient-2"></div>
+            <div class="gradient-3"></div>
+        </div>
+        
+        <div class="login-container">
+            <div class="login-box">
+                <div class="login-header">
+                    <div class="login-logo-wrapper">
+                        <div class="login-logo-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L12,15H9V10H15V14L13,18H16V19H10Z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <h1 data-i18n="login.title">Anmelden</h1>
+                    <p data-i18n="login.subtitle">Willkommen zurück</p>
+                </div>
+
+                <!-- Normal Login Form -->
+                <form id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <label data-i18n="login.email">E-Mail</label>
+                        <input type="email" id="emailInput" required>
+                    </div>
+                    
+                    <div class="form-group" id="passwordGroup">
+                        <label data-i18n="login.password">Passwort</label>
+                        <input type="password" id="passwordInput" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="loginBtn">
+                        <span data-i18n="login.button">Anmelden</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <!-- Admin Code Input (Hidden) -->
+                <div id="adminCodeSection" class="admin-code-section hidden">
+                    <div class="admin-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <span data-i18n="login.adminMode">Admin-Modus</span>
+                    </div>
+                    
+                    <p data-i18n="login.enterCode">Bitte geben Sie Ihren Admin-Code ein:</p>
+                    
+                    <div class="code-inputs">
+                        <input type="text" maxlength="1" class="code-input" id="code1">
+                        <input type="text" maxlength="1" class="code-input" id="code2">
+                        <input type="text" maxlength="1" class="code-input" id="code3">
+                        <input type="text" maxlength="1" class="code-input" id="code4">
+                    </div>
+                    
+                    <button class="btn-primary" id="adminLoginBtn">
+                        <span data-i18n="login.verifyCode">Code bestätigen</span>
+                        <i class="fas fa-lock"></i>
+                    </button>
+                    
+                    <button class="btn-secondary" id="cancelAdminBtn">
+                        <span data-i18n="login.cancel">Abbrechen</span>
+                    </button>
+                </div>
+
+                <div class="login-footer">
+                    <a href="#" data-i18n="login.forgotPassword">Passwort vergessen?</a>
+                    <span>•</span>
+                    <a href="#" id="registerLink" data-i18n="login.register">Registrieren</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modern Main Application (Hidden initially) -->
+    <div id="mainApp" class="modern-app hidden">
+        <!-- Modern Sidebar -->
+        <aside class="modern-sidebar">
+            <div class="sidebar-header">
+                <div class="app-logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L12,15H9V10H15V14L13,18H16V19H10Z"/>
+                        </svg>
+                    </div>
+                    <div class="app-name">
+                        <h1>Sunshin3 Invoice</h1>
+                        <span id="userPlanBadge">Professional Edition</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" onclick="navigateTo('dashboard')">
+                    <i class="fas fa-th-large"></i>
+                    <span data-i18n="nav.dashboard">Dashboard</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('invoices')">
+                    <i class="fas fa-file-invoice"></i>
+                    <span data-i18n="nav.invoices">Rechnungen</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('create-invoice')">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Rechnung erstellen</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('customers')">
+                    <i class="fas fa-users"></i>
+                    <span data-i18n="nav.customers">Kunden</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('reminders')">
+                    <i class="fas fa-bell"></i>
+                    <span>Mahnungen</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('company')">
+                    <i class="fas fa-building"></i>
+                    <span>Unternehmen</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('products')">
+                    <i class="fas fa-box"></i>
+                    <span data-i18n="nav.products">Produkte</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="subscription-info" id="subscriptionInfo">
+                    <div class="subscription-label">Trial Version</div>
+                    <div class="subscription-details">
+                        <span id="daysLeft">30 Tage verbleibend</span>
+                        <div class="subscription-limits">
+                            <span>5 / 5 Rechnungen</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-profile" onclick="navigateTo('profile')">
+                    <div class="user-avatar" id="userAvatar">JD</div>
+                    <div class="user-info">
+                        <div class="user-name" id="userName">John Doe</div>
+                        <div class="user-role">Account</div>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Modern Main Content -->
+        <main class="modern-main">
+            <header class="modern-header">
+                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                <div class="header-actions">
+                    <div class="search-box-modern">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Suchen..." id="globalSearch">
+                    </div>
+                    
+                    <!-- Language Switcher -->
+                    <div class="language-switcher">
+                        <button class="lang-current" id="langDropdownBtn">
+                            <img src="../assets/flags/de.svg" alt="DE" id="currentLangFlag">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="lang-dropdown hidden" id="langDropdown">
+                            <button onclick="changeLanguage('de')">
+                                <img src="../assets/flags/de.svg" alt="DE">
+                                <span>Deutsch</span>
+                            </button>
+                            <button onclick="changeLanguage('en')">
+                                <img src="../assets/flags/en.svg" alt="EN">
+                                <span>English</span>
+                            </button>
+                            <button onclick="changeLanguage('fr')">
+                                <img src="../assets/flags/fr.svg" alt="FR">
+                                <span>Français</span>
+                            </button>
+                            <button onclick="changeLanguage('es')">
+                                <img src="../assets/flags/es.svg" alt="ES">
+                                <span>Español</span>
+                            </button>
+                            <button onclick="changeLanguage('it')">
+                                <img src="../assets/flags/it.svg" alt="IT">
+                                <span>Italiano</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-secondary-modern" onclick="navigateTo('settings')">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    
+                    <button class="btn-primary-modern" id="upgradeBtn" onclick="showUpgradeModal()">
+                        <i class="fas fa-crown"></i>
+                        <span>Upgrade</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Subscription Banner (for trial/basic users) -->
+            <div class="subscription-banner" id="subscriptionBanner">
+                <div class="subscription-status">
+                    <div class="subscription-badge-modern trial" id="subscriptionBadge">
+                        <i class="fas fa-clock"></i>
+                        <span>Trial Version</span>
+                    </div>
+                    <span class="subscription-message">Upgrade für unbegrenzte Funktionen und Premium-Support</span>
+                </div>
+                <button class="btn-primary-modern" onclick="showUpgradeModal()">
+                    <i class="fas fa-rocket"></i>
+                    <span>Jetzt upgraden</span>
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area" id="contentArea">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modalContainer"></div>
+
+    <!-- Scripts -->
+    <script src="../locales/i18n.js"></script>
+    <script src="../src/renderer.js"></script>
+    <script src="../src/modern-app.js"></script>
+</body>
+</html>
