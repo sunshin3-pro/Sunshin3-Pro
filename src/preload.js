@@ -56,6 +56,18 @@ contextBridge.exposeInMainWorld('api', {
   createInvoice: (invoice) => ipcRenderer.invoke('create-invoice', invoice),
   updateInvoice: (id, invoice) => ipcRenderer.invoke('update-invoice', id, invoice),
   deleteInvoice: (id) => ipcRenderer.invoke('delete-invoice', id),
+  updateInvoiceStatus: (invoiceId, status) => ipcRenderer.invoke('update-invoice-status', invoiceId, status),
+  
+  // Payments
+  createPayment: (paymentData) => ipcRenderer.invoke('create-payment', paymentData),
+  getInvoicePayments: (invoiceId) => ipcRenderer.invoke('get-invoice-payments', invoiceId),
+  
+  // Reminders
+  getReminders: () => ipcRenderer.invoke('get-reminders'),
+  
+  // Company Settings
+  getCompanySettings: () => ipcRenderer.invoke('get-company-settings'),
+  updateCompanySettings: (companyData) => ipcRenderer.invoke('update-company-settings', companyData),
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
