@@ -256,10 +256,12 @@ body {
 
 /* User Profile Section - Komplett neu designed */
 .sidebar-footer {
-    padding: 20px;
+    padding: 16px 20px 20px 20px;
     border-top: 1px solid var(--border);
     background: rgba(30, 33, 57, 0.5);
     backdrop-filter: blur(10px);
+    margin-top: auto; /* Drückt es nach unten */
+    flex-shrink: 0; /* Verhindert Schrumpfen */
 }
 
 .subscription-info {
