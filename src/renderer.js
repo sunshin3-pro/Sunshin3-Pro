@@ -287,10 +287,13 @@ function handleNavClick(e) {
     }
 }
 
-// Show Main App - Enhanced
+// Show Main App - Enhanced with user transfer
 function showMainApp(user) {
     console.log('Showing main app for user:', user);
     currentUser = user;
+    
+    // Transfer user to moderne-app.js
+    window.currentUserFromRenderer = user;
     
     const loginScreen = document.getElementById('loginScreen');
     const mainApp = document.getElementById('mainApp');
