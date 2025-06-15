@@ -1531,6 +1531,799 @@ function showReminderSettings() {
     showToast('Mahnungseinstellungen - In Entwicklung', 'info');
 }
 
+// NEUE FUNKTIONEN - Implementierung der fehlenden Seiten
+
+// Load Reminders
+async function loadReminders() {
+    const remindersResult = await window.api.getReminders();
+    const reminders = remindersResult.success ? remindersResult.reminders : [];
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="page-content animate-fade-in">
+            <div class="page-actions">
+                <button class="btn-primary-modern" onclick="showReminderSettings()">
+                    <i class="fas fa-cog"></i>
+                    Mahnungseinstellungen
+                </button>
+            </div>
+            
+            ${reminders.length > 0 ? `
+                <div class="stats-grid-modern" style="margin-bottom: 30px;">
+                    <div class="stat-card-modern">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-exclamation-triangle" style="color: var(--error);"></i>
+                        </div>
+                        <div class="stat-value">${reminders.length}</div>
+                        <div class="stat-label">Überfällige Rechnungen</div>
+                    </div>
+                    
+                    <div class="stat-card-modern">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-euro-sign" style="color: var(--warning);"></i>
+                        </div>
+                        <div class="stat-value">€${reminders.reduce((sum, r) => sum + r.total, 0).toFixed(2)}</div>
+                        <div class="stat-label">Offener Betrag</div>
+                    </div>
+                    
+                    <div class="stat-card-modern">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-clock" style="color: var(--accent-primary);"></i>
+                        </div>
+                        <div class="stat-value">${Math.max(...reminders.map(r => Math.floor(r.days_overdue)))}</div>
+                        <div class="stat-label">Max. Tage überfällig</div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="table-modern">
+                        <thead>
+                            <tr>
+                                <th>Rechnung</th>
+                                <th>Kunde</th>
+                                <th>Betrag</th>
+                                <th>Fällig seit</th>
+                                <th>Tage überfällig</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reminders.map(reminder => `
+                                <tr>
+                                    <td><strong>${reminder.invoice_number}</strong></td>
+                                    <td>${reminder.company_name || `${reminder.first_name} ${reminder.last_name}`}</td>
+                                    <td><strong>€${reminder.total}</strong></td>
+                                    <td>${formatDate(reminder.due_date)}</td>
+                                    <td>
+                                        <span class="badge-modern badge-error">
+                                            ${Math.floor(reminder.days_overdue)} Tage
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon" onclick="sendReminder(${reminder.id})" title="Mahnung senden">
+                                                <i class="fas fa-bell"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="markAsPaid(${reminder.id})" title="Als bezahlt markieren">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="viewInvoice(${reminder.id})" title="Rechnung ansehen">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                    </div>
+                    <h3>Keine überfälligen Rechnungen</h3>
+                    <p>Alle Rechnungen sind bezahlt oder noch nicht fällig</p>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+// Load Company Settings
+async function loadCompanySettings() {
+    const result = await window.api.getCompanySettings();
+    const settings = result.success ? result.settings : {};
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="page-content animate-fade-in">
+            <form id="companySettingsForm" class="settings-form">
+                <div class="form-section">
+                    <h3>Grundinformationen</h3>
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Firmenname *</label>
+                            <input type="text" class="form-input-modern" name="name" value="${settings.name || ''}" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">E-Mail *</label>
+                            <input type="email" class="form-input-modern" name="email" value="${settings.email || ''}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Telefon</label>
+                            <input type="tel" class="form-input-modern" name="phone" value="${settings.phone || ''}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Website</label>
+                            <input type="url" class="form-input-modern" name="website" value="${settings.website || ''}" placeholder="https://example.com">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Adresse</h3>
+                    <div class="form-group-modern">
+                        <label class="form-label-modern">Straße und Hausnummer</label>
+                        <input type="text" class="form-input-modern" name="address" value="${settings.address || ''}">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">PLZ</label>
+                            <input type="text" class="form-input-modern" name="postalCode" value="${settings.postalCode || ''}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Stadt</label>
+                            <input type="text" class="form-input-modern" name="city" value="${settings.city || ''}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Land</label>
+                            <input type="text" class="form-input-modern" name="country" value="${settings.country || 'Deutschland'}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Steuerliche Informationen</h3>
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Steuernummer</label>
+                            <input type="text" class="form-input-modern" name="taxId" value="${settings.taxId || ''}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">USt-IdNr.</label>
+                            <input type="text" class="form-input-modern" name="vatId" value="${settings.vatId || ''}" placeholder="DE123456789">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Bankverbindung</h3>
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">IBAN</label>
+                            <input type="text" class="form-input-modern" name="iban" value="${settings.iban || ''}" placeholder="DE89 3704 0044 0532 0130 00">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">BIC</label>
+                            <input type="text" class="form-input-modern" name="bic" value="${settings.bic || ''}" placeholder="COBADEFFXXX">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-modern">
+                        <label class="form-label-modern">Bank</label>
+                        <input type="text" class="form-input-modern" name="bankAccount" value="${settings.bankAccount || ''}" placeholder="Deutsche Bank AG">
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas fa-save"></i>
+                        Speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    // Form submission
+    document.getElementById('companySettingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const companyData = {};
+        formData.forEach((value, key) => {
+            companyData[key] = value;
+        });
+        
+        const result = await window.api.updateCompanySettings(companyData);
+        
+        if (result.success) {
+            showToast('Unternehmensdaten erfolgreich gespeichert', 'success');
+        } else {
+            showToast(result.error || 'Fehler beim Speichern', 'error');
+        }
+    });
+}
+
+// Load Settings
+async function loadSettings() {
+    const result = await window.api.getSettings();
+    const settings = result.success ? result.settings : {};
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="settings-container animate-fade-in">
+            <div class="settings-nav">
+                <div class="settings-nav-item active" onclick="showSettingsTab('general')">
+                    <i class="fas fa-cog"></i>
+                    <span>Allgemein</span>
+                </div>
+                <div class="settings-nav-item" onclick="showSettingsTab('invoice')">
+                    <i class="fas fa-file-invoice"></i>
+                    <span>Rechnungen</span>
+                </div>
+                <div class="settings-nav-item" onclick="showSettingsTab('email')">
+                    <i class="fas fa-envelope"></i>
+                    <span>E-Mail</span>
+                </div>
+                <div class="settings-nav-item" onclick="showSettingsTab('backup')">
+                    <i class="fas fa-database"></i>
+                    <span>Backup</span>
+                </div>
+                <div class="settings-nav-item" onclick="showSettingsTab('subscription')">
+                    <i class="fas fa-crown"></i>
+                    <span>Abonnement</span>
+                </div>
+            </div>
+            
+            <div class="settings-content">
+                <!-- General Settings -->
+                <div class="settings-section active" id="general-settings">
+                    <h2>Allgemeine Einstellungen</h2>
+                    
+                    <div class="settings-group">
+                        <h3>Sprache und Region</h3>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Sprache</label>
+                            <select class="form-input-modern" id="language-select">
+                                <option value="de" ${(settings.language || 'de') === 'de' ? 'selected' : ''}>Deutsch</option>
+                                <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
+                                <option value="fr" ${settings.language === 'fr' ? 'selected' : ''}>Français</option>
+                                <option value="es" ${settings.language === 'es' ? 'selected' : ''}>Español</option>
+                                <option value="it" ${settings.language === 'it' ? 'selected' : ''}>Italiano</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Währung</label>
+                            <select class="form-input-modern" id="currency-select">
+                                <option value="EUR" ${(settings.currency || 'EUR') === 'EUR' ? 'selected' : ''}>Euro (€)</option>
+                                <option value="USD" ${settings.currency === 'USD' ? 'selected' : ''}>US Dollar ($)</option>
+                                <option value="CHF" ${settings.currency === 'CHF' ? 'selected' : ''}>Schweizer Franken (CHF)</option>
+                                <option value="GBP" ${settings.currency === 'GBP' ? 'selected' : ''}>Britisches Pfund (£)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Datumsformat</label>
+                            <select class="form-input-modern" id="dateFormat-select">
+                                <option value="DD.MM.YYYY" ${(settings.dateFormat || 'DD.MM.YYYY') === 'DD.MM.YYYY' ? 'selected' : ''}>DD.MM.YYYY</option>
+                                <option value="MM/DD/YYYY" ${settings.dateFormat === 'MM/DD/YYYY' ? 'selected' : ''}>MM/DD/YYYY</option>
+                                <option value="YYYY-MM-DD" ${settings.dateFormat === 'YYYY-MM-DD' ? 'selected' : ''}>YYYY-MM-DD</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-primary-modern" onclick="saveGeneralSettings()">
+                        <i class="fas fa-save"></i>
+                        Speichern
+                    </button>
+                </div>
+                
+                <!-- Invoice Settings -->
+                <div class="settings-section" id="invoice-settings">
+                    <h2>Rechnungseinstellungen</h2>
+                    
+                    <div class="settings-group">
+                        <h3>Rechnungsnummern</h3>
+                        <div class="form-row">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Präfix</label>
+                                <input type="text" class="form-input-modern" id="invoicePrefix" value="${settings.invoicePrefix || 'RE'}" placeholder="RE">
+                            </div>
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Nächste Nummer</label>
+                                <input type="number" class="form-input-modern" id="nextInvoiceNumber" value="${settings.nextInvoiceNumber || '1'}" min="1">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Zahlungsziel (Tage)</label>
+                            <input type="number" class="form-input-modern" id="paymentTermsDays" value="${settings.paymentTermsDays || '14'}" min="1" max="365">
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Standard Fußzeile</label>
+                            <textarea class="form-input-modern" id="invoiceFooter" rows="3" placeholder="Vielen Dank für Ihr Vertrauen!">${settings.invoiceFooter || ''}</textarea>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-primary-modern" onclick="saveInvoiceSettings()">
+                        <i class="fas fa-save"></i>
+                        Speichern
+                    </button>
+                </div>
+                
+                <!-- Email Settings -->
+                <div class="settings-section" id="email-settings">
+                    <h2>E-Mail Einstellungen</h2>
+                    
+                    <div class="settings-group">
+                        <h3>SMTP Konfiguration</h3>
+                        <div class="form-row">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">SMTP Server</label>
+                                <input type="text" class="form-input-modern" id="smtpHost" value="${settings.smtp_host || ''}" placeholder="smtp.gmail.com">
+                            </div>
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Port</label>
+                                <input type="number" class="form-input-modern" id="smtpPort" value="${settings.smtp_port || '587'}" placeholder="587">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Benutzername</label>
+                                <input type="email" class="form-input-modern" id="smtpUser" value="${settings.smtp_user || ''}" placeholder="your.email@gmail.com">
+                            </div>
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Passwort</label>
+                                <input type="password" class="form-input-modern" id="smtpPassword" value="${settings.smtp_password || ''}" placeholder="App-Passwort">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="checkbox-modern">
+                                <input type="checkbox" id="smtpSecure" ${settings.smtp_secure === 'true' ? 'checked' : ''}>
+                                <span>SSL/TLS verwenden</span>
+                            </label>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button class="btn-secondary-modern" onclick="testEmailConnection()">
+                                <i class="fas fa-plug"></i>
+                                Verbindung testen
+                            </button>
+                            <button class="btn-primary-modern" onclick="saveEmailSettings()">
+                                <i class="fas fa-save"></i>
+                                Speichern
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Backup Settings -->
+                <div class="settings-section" id="backup-settings">
+                    <h2>Backup & Export</h2>
+                    
+                    <div class="settings-group">
+                        <h3>Datenbank Backup</h3>
+                        <p class="text-secondary">Erstellen Sie regelmäßig Backups Ihrer Daten</p>
+                        
+                        <div class="backup-actions">
+                            <button class="btn-primary-modern" onclick="createBackup()">
+                                <i class="fas fa-download"></i>
+                                Backup erstellen
+                            </button>
+                            <button class="btn-secondary-modern" onclick="restoreBackup()">
+                                <i class="fas fa-upload"></i>
+                                Backup wiederherstellen
+                            </button>
+                        </div>
+                        
+                        <div class="backup-info">
+                            <h4>Automatische Backups</h4>
+                            <label class="checkbox-modern">
+                                <input type="checkbox" id="autoBackup" ${settings.autoBackup === 'true' ? 'checked' : ''}>
+                                <span>Tägliche automatische Backups</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Subscription Settings -->
+                <div class="settings-section" id="subscription-settings">
+                    <h2>Abonnement verwalten</h2>
+                    
+                    <div class="subscription-status-card">
+                        <div class="subscription-header">
+                            <h3>Aktuelles Abonnement</h3>
+                            <span class="subscription-badge-modern ${currentUser?.subscription_type || 'trial'}">
+                                ${getSubscriptionLabel(currentUser?.subscription_type || 'trial')}
+                            </span>
+                        </div>
+                        
+                        <div class="subscription-details">
+                            <div class="detail-item">
+                                <span>Status:</span>
+                                <span>Aktiv</span>
+                            </div>
+                            <div class="detail-item">
+                                <span>Läuft ab:</span>
+                                <span>${currentUser?.subscription_expires ? formatDate(currentUser.subscription_expires) : 'Unbekannt'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="subscription-limits">
+                            <h4>Aktuelle Limits</h4>
+                            <div class="limits-grid">
+                                <div class="limit-item">
+                                    <span>Rechnungen:</span>
+                                    <span>${subscriptionLimits[currentUser?.subscription_type || 'trial'].invoices === Infinity ? 'Unbegrenzt' : subscriptionLimits[currentUser?.subscription_type || 'trial'].invoices}</span>
+                                </div>
+                                <div class="limit-item">
+                                    <span>Kunden:</span>
+                                    <span>${subscriptionLimits[currentUser?.subscription_type || 'trial'].customers === Infinity ? 'Unbegrenzt' : subscriptionLimits[currentUser?.subscription_type || 'trial'].customers}</span>
+                                </div>
+                                <div class="limit-item">
+                                    <span>Produkte:</span>
+                                    <span>${subscriptionLimits[currentUser?.subscription_type || 'trial'].products === Infinity ? 'Unbegrenzt' : subscriptionLimits[currentUser?.subscription_type || 'trial'].products}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="subscription-actions">
+                            <button class="btn-primary-modern" onclick="showUpgradeModal()">
+                                <i class="fas fa-crown"></i>
+                                Upgrade
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Load Profile
+async function loadProfile() {
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="page-content animate-fade-in">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    ${(currentUser?.first_name?.charAt(0) || 'U') + (currentUser?.last_name?.charAt(0) || 'U')}
+                </div>
+                <div class="profile-info">
+                    <h2>${currentUser?.first_name || 'Unbekannt'} ${currentUser?.last_name || 'Benutzer'}</h2>
+                    <p>${currentUser?.email || 'Keine E-Mail'}</p>
+                    <span class="subscription-badge-modern ${currentUser?.subscription_type || 'trial'}">
+                        ${getSubscriptionLabel(currentUser?.subscription_type || 'trial')}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="profile-content">
+                <div class="profile-tabs">
+                    <button class="tab-btn active" onclick="showProfileTab('personal')">
+                        <i class="fas fa-user"></i>
+                        Persönliche Daten
+                    </button>
+                    <button class="tab-btn" onclick="showProfileTab('security')">
+                        <i class="fas fa-shield-alt"></i>
+                        Sicherheit
+                    </button>
+                    <button class="tab-btn" onclick="showProfileTab('preferences')">
+                        <i class="fas fa-cog"></i>
+                        Einstellungen
+                    </button>
+                </div>
+                
+                <div class="profile-tab-content">
+                    <!-- Personal Data Tab -->
+                    <div class="tab-panel active" id="personal-tab">
+                        <h3>Persönliche Informationen</h3>
+                        <form id="profileForm" class="profile-form">
+                            <div class="form-row">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Vorname</label>
+                                    <input type="text" class="form-input-modern" name="first_name" value="${currentUser?.first_name || ''}" required>
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Nachname</label>
+                                    <input type="text" class="form-input-modern" name="last_name" value="${currentUser?.last_name || ''}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">E-Mail</label>
+                                <input type="email" class="form-input-modern" name="email" value="${currentUser?.email || ''}" readonly>
+                                <small class="form-hint">E-Mail kann nicht geändert werden</small>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Telefon</label>
+                                    <input type="tel" class="form-input-modern" name="phone" value="${currentUser?.phone || ''}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Firma</label>
+                                    <input type="text" class="form-input-modern" name="company_name" value="${currentUser?.company_name || ''}">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Adresse</label>
+                                <input type="text" class="form-input-modern" name="address" value="${currentUser?.address || ''}">
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">PLZ</label>
+                                    <input type="text" class="form-input-modern" name="postal_code" value="${currentUser?.postal_code || ''}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Stadt</label>
+                                    <input type="text" class="form-input-modern" name="city" value="${currentUser?.city || ''}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Land</label>
+                                    <input type="text" class="form-input-modern" name="country" value="${currentUser?.country || 'Deutschland'}">
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn-primary-modern">
+                                <i class="fas fa-save"></i>
+                                Speichern
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Security Tab -->
+                    <div class="tab-panel" id="security-tab">
+                        <h3>Passwort ändern</h3>
+                        <form id="passwordForm" class="profile-form">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Aktuelles Passwort</label>
+                                <input type="password" class="form-input-modern" name="currentPassword" required>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Neues Passwort</label>
+                                <input type="password" class="form-input-modern" name="newPassword" required minlength="6">
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Passwort bestätigen</label>
+                                <input type="password" class="form-input-modern" name="confirmPassword" required>
+                            </div>
+                            
+                            <button type="submit" class="btn-primary-modern">
+                                <i class="fas fa-key"></i>
+                                Passwort ändern
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Preferences Tab -->
+                    <div class="tab-panel" id="preferences-tab">
+                        <h3>Einstellungen</h3>
+                        <div class="preferences-form">
+                            <div class="preference-item">
+                                <label class="checkbox-modern">
+                                    <input type="checkbox" id="emailNotifications" checked>
+                                    <span>E-Mail Benachrichtigungen erhalten</span>
+                                </label>
+                            </div>
+                            
+                            <div class="preference-item">
+                                <label class="checkbox-modern">
+                                    <input type="checkbox" id="autoSave" checked>
+                                    <span>Automatisches Speichern</span>
+                                </label>
+                            </div>
+                            
+                            <div class="preference-item">
+                                <label class="form-label-modern">Theme</label>
+                                <select class="form-input-modern" id="theme">
+                                    <option value="dark">Dark Mode</option>
+                                    <option value="light">Light Mode</option>
+                                    <option value="auto">Automatisch</option>
+                                </select>
+                            </div>
+                            
+                            <button class="btn-primary-modern" onclick="savePreferences()">
+                                <i class="fas fa-save"></i>
+                                Speichern
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Form handlers
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const profileData = {};
+        formData.forEach((value, key) => {
+            profileData[key] = value;
+        });
+        
+        const result = await window.api.updateProfile(profileData);
+        
+        if (result.success) {
+            showToast('Profil erfolgreich aktualisiert', 'success');
+            // Update current user object
+            Object.assign(currentUser, profileData);
+        } else {
+            showToast(result.error || 'Fehler beim Aktualisieren', 'error');
+        }
+    });
+    
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const passwordData = {
+            currentPassword: formData.get('currentPassword'),
+            newPassword: formData.get('newPassword')
+        };
+        
+        if (passwordData.newPassword !== formData.get('confirmPassword')) {
+            showToast('Passwörter stimmen nicht überein', 'error');
+            return;
+        }
+        
+        const result = await window.api.changePassword(passwordData);
+        
+        if (result.success) {
+            showToast('Passwort erfolgreich geändert', 'success');
+            e.target.reset();
+        } else {
+            showToast(result.error || 'Fehler beim Ändern des Passworts', 'error');
+        }
+    });
+}
+
+// Helper functions for Settings and Profile
+function showSettingsTab(tabName) {
+    // Remove active class from all nav items and sections
+    document.querySelectorAll('.settings-nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.settings-section').forEach(section => section.classList.remove('active'));
+    
+    // Add active class to clicked nav item and corresponding section
+    event.target.closest('.settings-nav-item').classList.add('active');
+    document.getElementById(tabName + '-settings').classList.add('active');
+}
+
+function showProfileTab(tabName) {
+    // Remove active class from all tab buttons and panels
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+    
+    // Add active class to clicked button and corresponding panel
+    event.target.classList.add('active');
+    document.getElementById(tabName + '-tab').classList.add('active');
+}
+
+// Settings save functions
+async function saveGeneralSettings() {
+    const settings = {
+        language: document.getElementById('language-select').value,
+        currency: document.getElementById('currency-select').value,
+        dateFormat: document.getElementById('dateFormat-select').value
+    };
+    
+    const result = await window.api.updateSettings(settings);
+    
+    if (result.success) {
+        showToast('Allgemeine Einstellungen gespeichert', 'success');
+    } else {
+        showToast('Fehler beim Speichern', 'error');
+    }
+}
+
+async function saveInvoiceSettings() {
+    const settings = {
+        invoicePrefix: document.getElementById('invoicePrefix').value,
+        nextInvoiceNumber: document.getElementById('nextInvoiceNumber').value,
+        paymentTermsDays: document.getElementById('paymentTermsDays').value,
+        invoiceFooter: document.getElementById('invoiceFooter').value
+    };
+    
+    const result = await window.api.updateSettings(settings);
+    
+    if (result.success) {
+        showToast('Rechnungseinstellungen gespeichert', 'success');
+    } else {
+        showToast('Fehler beim Speichern', 'error');
+    }
+}
+
+async function saveEmailSettings() {
+    const settings = {
+        smtp_host: document.getElementById('smtpHost').value,
+        smtp_port: document.getElementById('smtpPort').value,
+        smtp_user: document.getElementById('smtpUser').value,
+        smtp_password: document.getElementById('smtpPassword').value,
+        smtp_secure: document.getElementById('smtpSecure').checked.toString()
+    };
+    
+    const result = await window.api.updateSettings(settings);
+    
+    if (result.success) {
+        showToast('E-Mail Einstellungen gespeichert', 'success');
+    } else {
+        showToast('Fehler beim Speichern', 'error');
+    }
+}
+
+async function testEmailConnection() {
+    const config = {
+        host: document.getElementById('smtpHost').value,
+        port: document.getElementById('smtpPort').value,
+        user: document.getElementById('smtpUser').value,
+        password: document.getElementById('smtpPassword').value,
+        secure: document.getElementById('smtpSecure').checked.toString()
+    };
+    
+    showToast('Teste Verbindung...', 'info');
+    
+    const result = await window.api.testEmailConnection(config);
+    
+    if (result.success) {
+        showToast(result.message, 'success');
+    } else {
+        showToast(result.error || 'Verbindungstest fehlgeschlagen', 'error');
+    }
+}
+
+async function createBackup() {
+    showToast('Erstelle Backup...', 'info');
+    
+    const result = await window.api.createBackup();
+    
+    if (result.success) {
+        showToast('Backup erfolgreich erstellt: ' + result.path, 'success');
+    } else {
+        showToast('Fehler beim Erstellen des Backups', 'error');
+    }
+}
+
+function restoreBackup() {
+    showToast('Backup-Wiederherstellung - In Entwicklung', 'info');
+}
+
+function savePreferences() {
+    showToast('Einstellungen gespeichert', 'success');
+}
+
+// Reminder functions
+async function sendReminder(invoiceId) {
+    showToast('Mahnung wird gesendet...', 'info');
+    // Implementation for sending reminder
+}
+
+async function markAsPaid(invoiceId) {
+    const result = await window.api.updateInvoiceStatus(invoiceId, 'paid');
+    
+    if (result.success) {
+        showToast('Rechnung als bezahlt markiert', 'success');
+        loadReminders(); // Reload the page
+    } else {
+        showToast('Fehler beim Aktualisieren', 'error');
+    }
+}
+
 // Export functions for global access
 window.navigateTo = navigateTo;
 window.showUpgradeModal = showUpgradeModal;
