@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunshin3 Pro - Admin Panel</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+    <link rel="stylesheet" href="../assets/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Custom Titlebar -->
+    <div class="titlebar">
+        <div class="titlebar-drag">
+            <div class="titlebar-title">
+                <img src="../assets/icon.png" alt="Logo" class="titlebar-icon">
+                <span>Sunshin3 Pro - Admin Panel</span>
+                <span class="admin-badge-small">
+                    <i class="fas fa-shield-alt"></i> ADMIN
+                </span>
+            </div>
+        </div>
+        <div class="titlebar-controls">
+            <button class="titlebar-btn" onclick="window.api.minimizeWindow()">
+                <i class="fas fa-minus"></i>
+            </button>
+            <button class="titlebar-btn" onclick="window.api.maximizeWindow()">
+                <i class="fas fa-square"></i>
+            </button>
+            <button class="titlebar-btn titlebar-close" onclick="window.api.closeAdminWindow()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="admin-panel">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-info">
+                <i class="fas fa-user-shield"></i>
+                <div>
+                    <p class="admin-role" id="adminRole">Super Admin</p>
+                    <p class="admin-email" id="adminEmail">admin@sunshin3.pro</p>
+                </div>
+            </div>
+            
+            <nav class="admin-nav">
+                <button class="admin-nav-btn active" data-section="overview">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span data-i18n="admin.dashboard">Übersicht</span>
+                </button>
+                <button class="admin-nav-btn" data-section="users">
+                    <i class="fas fa-users"></i>
+                    <span data-i18n="admin.users">Benutzer</span>
+                </button>
+                <button class="admin-nav-btn" data-section="admins">
+                    <i class="fas fa-user-shield"></i>
+                    <span data-i18n="admin.admins">Administratoren</span>
+                </button>
+                <button class="admin-nav-btn" data-section="licenses">
+                    <i class="fas fa-key"></i>
+                    <span data-i18n="admin.licenses">Lizenzen</span>
+                </button>
+                <button class="admin-nav-btn" data-section="system">
+                    <i class="fas fa-server"></i>
+                    <span data-i18n="admin.system">System</span>
+                </button>
+                <button class="admin-nav-btn" data-section="activities">
+                    <i class="fas fa-history"></i>
+                    <span data-i18n="admin.activities">Aktivitäten</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Overview Section -->
+            <section id="overview-section" class="admin-section active">
+                <h1 data-i18n="admin.dashboard">Admin Dashboard</h1>
+                
+                <div class="admin-stats">
+                    <div class="admin-stat-card">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <h3 id="totalUsers">0</h3>
+                            <p>Registrierte Benutzer</p>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <i class="fas fa-user-shield"></i>
+                        <div>
+                            <h3 id="totalAdmins">0</h3>
+                            <p>Administratoren</p>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <i class="fas fa-file-invoice"></i>
+                        <div>
+                            <h3 id="totalInvoices">0</h3>
+                            <p>Gesamtrechnungen</p>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <i class="fas fa-crown"></i>
+                        <div>
+                            <h3 id="proUsers">0</h3>
+                            <p>Pro Benutzer</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-activities">
+                    <h2>Letzte Aktivitäten</h2>
+                    <div id="recentActivitiesList" class="activity-list">
+                        <!-- Aktivitäten werden hier geladen -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="users-section" class="admin-section">
+                <h1 data-i18n="admin.users">Benutzer verwalten</h1>
+                
+                <div class="section-header">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Benutzer suchen..." id="userSearch">
+                    </div>
+                    <button class="btn-primary">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>E-Mail</th>
+                                <th>Firma</th>
+                                <th>Abo</th>
+                                <th>Registriert</th>
+                                <th>Status</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Benutzer werden hier geladen -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Admins Section -->
+            <section id="admins-section" class="admin-section">
+                <h1 data-i18n="admin.admins">Administratoren</h1>
+                
+                <div class="section-header">
+                    <h2>Admin-Verwaltung</h2>
+                    <button class="btn-primary" onclick="showAddAdminDialog()">
+                        <i class="fas fa-plus"></i> <span data-i18n="admin.addAdmin">Admin hinzufügen</span>
+                    </button>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th data-i18n="admin.email">E-Mail</th>
+                                <th data-i18n="admin.role">Rolle</th>
+                                <th>Erstellt</th>
+                                <th data-i18n="admin.lastLogin">Letzter Login</th>
+                                <th data-i18n="admin.actions">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminsTableBody">
+                            <!-- Admins werden hier geladen -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Licenses Section -->
+            <section id="licenses-section" class="admin-section">
+                <h1 data-i18n="admin.licenses">Lizenzverwaltung</h1>
+                
+                <div class="license-overview">
+                    <div class="license-card">
+                        <h3>Trial (30 Tage)</h3>
+                        <ul>
+                            <li>5 Rechnungen</li>
+                            <li>15 Kunden</li>
+                            <li>5 Produkte</li>
+                        </ul>
+                        <p class="license-users">Aktive Nutzer: <span id="trialUsers">0</span></p>
+                    </div>
+                    <div class="license-card">
+                        <h3>Basic (€19.99/Monat)</h3>
+                        <ul>
+                            <li>50 Rechnungen</li>
+                            <li>100 Kunden</li>
+                            <li>50 Produkte</li>
+                        </ul>
+                        <p class="license-users">Aktive Nutzer: <span id="basicUsers">0</span></p>
+                    </div>
+                    <div class="license-card premium">
+                        <h3>Professional (€49.99/Monat)</h3>
+                        <ul>
+                            <li>Unbegrenzt Rechnungen</li>
+                            <li>Unbegrenzt Kunden</li>
+                            <li>Unbegrenzt Produkte</li>
+                        </ul>
+                        <p class="license-users">Aktive Nutzer: <span id="proUsers2">0</span></p>
+                    </div>
+                </div>
+
+                <h2>Benutzer-Lizenzen anpassen</h2>
+                <div class="license-adjustment">
+                    <p>Hier können Sie einzelnen Benutzern spezielle Lizenzen zuweisen oder Limits anpassen.</p>
+                </div>
+            </section>
+
+            <!-- System Section -->
+            <section id="system-section" class="admin-section">
+                <h1 data-i18n="admin.system">System</h1>
+                
+                <div class="system-info">
+                    <div class="info-group">
+                        <h3>App-Information</h3>
+                        <p>Version: <span id="appVersion">1.0.0</span></p>
+                        <p>Electron: <span id="electronVersion">-</span></p>
+                        <p>Node.js: <span id="nodeVersion">-</span></p>
+                    </div>
+                    
+                    <div class="info-group">
+                        <h3>Datenbank</h3>
+                        <p>Typ: SQLite3</p>
+                        <p>Größe: <span id="dbSize">-</span></p>
+                        <p>Pfad: <span id="dbPath">-</span></p>
+                    </div>
+                    
+                    <div class="info-group">
+                        <h3>MongoDB (Optional)</h3>
+                        <p>Status: <span id="mongoStatus">Nicht verbunden</span></p>
+                        <button class="btn-secondary" onclick="testMongoConnection()">
+                            <i class="fas fa-plug"></i> Verbindung testen
+                        </button>
+                    </div>
+                </div>
+
+                <div class="system-actions">
+                    <h3>System-Aktionen</h3>
+                    <button class="btn-secondary" onclick="createBackup()">
+                        <i class="fas fa-save"></i> Backup erstellen
+                    </button>
+                    <button class="btn-secondary" onclick="clearCache()">
+                        <i class="fas fa-broom"></i> Cache leeren
+                    </button>
+                    <button class="btn-secondary" onclick="checkUpdates()">
+                        <i class="fas fa-sync"></i> Updates prüfen
+                    </button>
+                </div>
+            </section>
+
+            <!-- Activities Section -->
+            <section id="activities-section" class="admin-section">
+                <h1 data-i18n="admin.activities">Aktivitäten</h1>
+                
+                <div class="section-header">
+                    <div class="filter-group">
+                        <select id="activityFilter">
+                            <option value="all">Alle Aktivitäten</option>
+                            <option value="login">Anmeldungen</option>
+                            <option value="admin">Admin-Aktionen</option>
+                            <option value="user">Benutzer-Aktionen</option>
+                        </select>
+                        <input type="date" id="activityDateFrom">
+                        <span>bis</span>
+                        <input type="date" id="activityDateTo">
+                    </div>
+                </div>
+
+                <div class="activity-log">
+                    <div id="activityLogList">
+                        <!-- Aktivitäten werden hier geladen -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Add Admin Dialog -->
+    <div id="addAdminDialog" class="modal hidden">
+        <div class="modal-content">
+            <h2>Neuen Admin hinzufügen</h2>
+            <form id="addAdminForm">
+                <div class="form-group">
+                    <label>E-Mail</label>
+                    <input type="email" id="newAdminEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Rolle</label>
+                    <select id="newAdminRole">
+                        <option value="admin">Admin</option>
+                        <option value="super-admin" disabled>Super-Admin</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeAddAdminDialog()">
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-plus"></i> Admin erstellen
+                    </button>
+                </div>
+            </form>
+            <div id="newAdminCode" class="admin-code-display hidden">
+                <p>Admin erfolgreich erstellt!</p>
+                <p>Der 4-stellige Code lautet:</p>
+                <div class="code-display">
+                    <span id="generatedCode">----</span>
+                </div>
+                <p class="warning">Bitte notieren Sie diesen Code! Er wird nur einmal angezeigt.</p>
+                <button class="btn-primary" onclick="closeAddAdminDialog()">
+                    Verstanden
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../src/admin.js"></script>
+</body>
+</html>
