@@ -371,10 +371,23 @@ function showMainApp(user) {
     if (mainApp) mainApp.classList.remove('hidden');
     if (userName) userName.textContent = user.first_name || user.email;
     
-    // Initialize modern app if available
-    if (typeof initializeModernApp === 'function') {
-        initializeModernApp();
-    }
+    // Initialize modern app functionality
+    setTimeout(() => {
+        if (typeof initializeModernApp === 'function') {
+            console.log('Initializing modern app...');
+            initializeModernApp();
+        } else {
+            console.error('initializeModernApp function not found!');
+        }
+        
+        // Ensure mobile menu is initialized
+        initializeMobileMenu();
+        
+        // Force initial navigation to dashboard
+        if (typeof navigateTo === 'function') {
+            navigateTo('dashboard');
+        }
+    }, 100);
 }
 
 // Registrierungsformular anzeigen
