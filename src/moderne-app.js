@@ -10,12 +10,12 @@ let subscriptionLimits = {
 // Store dashboard stats globally for usage tracking
 window.lastDashboardStats = {};
 
-// Initialize Modern App
-document.addEventListener('DOMContentLoaded', () => {
-    initializeModernApp();
-});
+// Initialize Modern App - DON'T run automatically on DOMContentLoaded
+// This will be called by renderer.js after login
 
 function initializeModernApp() {
+    console.log('initializeModernApp called');
+    
     // Get current user from session or default
     currentUser = getCurrentUser();
     
@@ -26,7 +26,9 @@ function initializeModernApp() {
     initializeNavigation();
     
     // Load initial page
-    navigateTo('dashboard');
+    setTimeout(() => {
+        navigateTo('dashboard');
+    }, 100);
     
     // Initialize global search
     initializeGlobalSearch();
