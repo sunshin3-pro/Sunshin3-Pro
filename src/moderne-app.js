@@ -1890,3 +1890,48 @@ function showAddProductModal() {
         }
     });
 }
+
+// Export functions for global access with logging
+console.log('🔧 Exporting functions to window object...');
+
+window.initializeModernApp = initializeModernApp;
+window.navigateTo = navigateTo;
+window.showUpgradeModal = showUpgradeModal;
+window.upgradeSubscription = upgradeSubscription;
+window.showAddCustomerModal = showAddCustomerModal;
+window.showAddProductModal = showAddProductModal;
+window.toggleBusinessFields = toggleBusinessFields;
+window.closeModal = closeModal;
+window.closeCelebration = closeCelebration;
+window.getCurrentUser = getCurrentUser;
+window.getCurrentUsage = getCurrentUsage;
+window.escapeHtml = escapeHtml;
+window.showToast = showToast;
+window.openAdminDashboard = openAdminDashboard;
+window.verifyAdminCode = verifyAdminCode;
+window.showProfileTab = showProfileTab;
+window.showSettingsTab = showSettingsTab;
+window.addInvoiceItem = addInvoiceItem;
+window.removeInvoiceItem = removeInvoiceItem;
+window.calculateInvoiceTotals = calculateInvoiceTotals;
+window.collectInvoiceItems = collectInvoiceItems;
+window.filterInvoices = filterInvoices;
+window.filterByStatus = filterByStatus;
+window.filterCustomers = filterCustomers;
+window.filterCustomerType = filterCustomerType;
+window.filterProducts = filterProducts;
+window.filterProductType = filterProductType;
+window.viewInvoice = viewInvoice;
+window.downloadInvoicePDF = downloadInvoicePDF;
+window.sendInvoiceEmail = sendInvoiceEmail;
+window.editCustomer = editCustomer;
+window.deleteCustomer = deleteCustomer;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.sendReminder = sendReminder;
+window.markAsPaid = markAsPaid;
+window.testEmailConnection = testEmailConnection;
+window.createBackup = createBackup;
+window.restoreBackup = restoreBackup;
+
+console.log('✅ Modern app functions exported successfully');
