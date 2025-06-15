@@ -1,15 +1,4 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Design Fixes für Sunshin3 Pro</title>
-</head>
-<body>
-<h1>Komplette Überarbeitung - Kopiere diese Teile in deine Dateien:</h1>
-
-<h2>1. Ersetze in modern-styles.css den kompletten Inhalt mit diesem:</h2>
-<pre><code>/* Modern Theme Variables */
+/* Modern Theme Variables */
 :root {
     --bg-primary: #0a0e27;
     --bg-secondary: #151934;
