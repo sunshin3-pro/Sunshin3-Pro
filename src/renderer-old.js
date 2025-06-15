@@ -52,8 +52,6 @@ function showErrorWithAnimation(message) {
 
 // Beim Laden der Seite
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOM loaded, initializing app...');
-    
     // Prüfe ob erste Installation
     const savedLanguage = await window.api.getLanguage();
     
@@ -73,18 +71,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Initialisiere alle Event Listener
     initializeEventListeners();
-    
-    // Debug: Check if moderne-app.js functions are available
-    console.log('Available functions check:');
-    console.log('initializeModernApp:', typeof window.initializeModernApp);
-    console.log('navigateTo:', typeof window.navigateTo);
-    console.log('showToast:', typeof window.showToast);
 });
 
 // Event Listener initialisieren
 function initializeEventListeners() {
-    console.log('Initializing event listeners...');
-    
     // Initialisiere Remember Me und Passwort-Stärke
     if (typeof initializeRememberMe === 'function') {
         initializeRememberMe();
@@ -221,8 +211,18 @@ function initializeEventListeners() {
         }
     });
 
-    // Navigation Buttons - Enhanced
-    setupNavigationListeners();
+    // Navigation Buttons
+    const navButtons = document.querySelectorAll('.nav-btn[data-page]');
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const page = e.currentTarget.getAttribute('data-page');
+            loadPage(page);
+            
+            // Update active state
+            navButtons.forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+        });
+    });
 
     // Register Link
     const registerLink = document.getElementById('registerLink');
@@ -232,136 +232,6 @@ function initializeEventListeners() {
             showRegistrationForm();
         });
     }
-}
-
-// Enhanced Navigation Setup
-function setupNavigationListeners() {
-    console.log('Setting up navigation listeners...');
-    
-    // Wait for DOM to be fully loaded and moderne-app.js to be available
-    const initNavigation = () => {
-        // Try to find navigation items
-        const navItems = document.querySelectorAll('.nav-item, .nav-btn[data-page]');
-        console.log('Found nav items:', navItems.length);
-        
-        navItems.forEach(item => {
-            // Remove existing listeners to avoid duplicates
-            item.removeEventListener('click', handleNavClick);
-            item.addEventListener('click', handleNavClick);
-        });
-        
-        // Setup direct onclick handlers for sidebar navigation
-        setTimeout(() => {
-            const sidebarLinks = document.querySelectorAll('.nav-item[onclick]');
-            console.log('Found sidebar links with onclick:', sidebarLinks.length);
-            
-            sidebarLinks.forEach(link => {
-                const onclickAttr = link.getAttribute('onclick');
-                if (onclickAttr && onclickAttr.includes('navigateTo')) {
-                    const page = onclickAttr.match(/navigateTo\('(.+)'\)/)?.[1];
-                    if (page) {
-                        // Remove onclick and add proper event listener
-                        link.removeAttribute('onclick');
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            console.log('Navigating to:', page);
-                            if (typeof window.navigateTo === 'function') {
-                                window.navigateTo(page);
-                            } else {
-                                console.error('navigateTo function not available');
-                            }
-                        });
-                    }
-                }
-            });
-        }, 200);
-    };
-    
-    // Run immediately and retry after short delay
-    initNavigation();
-    setTimeout(initNavigation, 500);
-    setTimeout(initNavigation, 1000);
-}
-
-// Navigation click handler
-function handleNavClick(e) {
-    e.preventDefault();
-    
-    const page = e.currentTarget.getAttribute('data-page') || 
-                 e.currentTarget.getAttribute('onclick')?.match(/navigateTo\('(.+)'\)/)?.[1];
-    
-    if (page) {
-        console.log('Navigation clicked:', page);
-        
-        if (typeof window.navigateTo === 'function') {
-            window.navigateTo(page);
-        } else {
-            console.error('navigateTo function not available');
-        }
-        
-        // Update active state
-        document.querySelectorAll('.nav-item, .nav-btn').forEach(item => {
-            item.classList.remove('active');
-        });
-        e.currentTarget.classList.add('active');
-    }
-}
-
-// Show Main App - Enhanced
-function showMainApp(user) {
-    console.log('Showing main app for user:', user);
-    currentUser = user;
-    
-    const loginScreen = document.getElementById('loginScreen');
-    const mainApp = document.getElementById('mainApp');
-    const userName = document.getElementById('userName');
-    
-    if (loginScreen) loginScreen.classList.add('hidden');
-    if (mainApp) mainApp.classList.remove('hidden');
-    if (userName) userName.textContent = user.first_name || user.email;
-    
-    // Initialize modern app functionality with retries
-    let retryCount = 0;
-    const maxRetries = 5;
-    
-    const initializeApp = () => {
-        console.log(`Attempting to initialize app (attempt ${retryCount + 1}/${maxRetries})`);
-        
-        if (typeof window.initializeModernApp === 'function') {
-            console.log('initializeModernApp found, calling...');
-            window.initializeModernApp();
-            
-            // Setup navigation after app initialization
-            setTimeout(() => {
-                setupNavigationListeners();
-                
-                // Force navigate to dashboard
-                if (typeof window.navigateTo === 'function') {
-                    console.log('Navigating to dashboard...');
-                    window.navigateTo('dashboard');
-                } else {
-                    console.log('navigateTo not available yet');
-                }
-            }, 100);
-            
-        } else {
-            console.log('initializeModernApp not found');
-            if (retryCount < maxRetries) {
-                retryCount++;
-                setTimeout(initializeApp, 200 * retryCount);
-            } else {
-                console.error('Failed to find initializeModernApp after', maxRetries, 'attempts');
-            }
-        }
-    };
-    
-    // Start initialization
-    setTimeout(initializeApp, 100);
-    
-    // Initialize mobile menu
-    setTimeout(() => {
-        initializeMobileMenu();
-    }, 150);
 }
 
 // Sprachauswahl anzeigen
@@ -487,6 +357,37 @@ function resetLoginForm() {
     if (passwordInput) passwordInput.value = '';
     
     codeInputs.forEach(input => input.value = '');
+}
+
+// Show Main App
+function showMainApp(user) {
+    currentUser = user;
+    
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    const userName = document.getElementById('userName');
+    
+    if (loginScreen) loginScreen.classList.add('hidden');
+    if (mainApp) mainApp.classList.remove('hidden');
+    if (userName) userName.textContent = user.first_name || user.email;
+    
+    // Initialize modern app functionality
+    setTimeout(() => {
+        if (typeof initializeModernApp === 'function') {
+            console.log('Initializing modern app...');
+            initializeModernApp();
+        } else {
+            console.error('initializeModernApp function not found!');
+        }
+        
+        // Ensure mobile menu is initialized
+        initializeMobileMenu();
+        
+        // Force initial navigation to dashboard
+        if (typeof navigateTo === 'function') {
+            navigateTo('dashboard');
+        }
+    }, 100);
 }
 
 // Registrierungsformular anzeigen
@@ -666,25 +567,15 @@ function showLoginForm() {
 
 // Error Display
 function showError(message) {
-    // Use moderne-app.js showToast if available, otherwise fallback
-    if (typeof window.showToast === 'function') {
-        window.showToast(message, 'error');
-    } else {
-        showToast(message, 'error');
-    }
+    showToast(message, 'error');
 }
 
 // Success Display
 function showSuccess(message) {
-    // Use moderne-app.js showToast if available, otherwise fallback
-    if (typeof window.showToast === 'function') {
-        window.showToast(message, 'success');
-    } else {
-        showToast(message, 'success');
-    }
+    showToast(message, 'success');
 }
 
-// Toast Notification (Fallback if moderne-app.js not loaded)
+// Toast Notification
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -702,9 +593,7 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => {
-            if (document.body.contains(toast)) {
-                document.body.removeChild(toast);
-            }
+            document.body.removeChild(toast);
         }, 300);
     }, 3000);
 }
@@ -714,4 +603,3 @@ window.selectLanguage = selectLanguage;
 window.changeLanguage = changeLanguage;
 window.showLoginForm = showLoginForm;
 window.resendVerificationEmail = resendVerificationEmail;
-window.setupNavigationListeners = setupNavigationListeners;
