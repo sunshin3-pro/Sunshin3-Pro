@@ -309,13 +309,14 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
+    padding: 10px 12px;
     background: var(--bg-tertiary);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    min-height: 52px;
 }
 
 .user-profile::before {
@@ -337,41 +338,48 @@ body {
 }
 
 .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     background: var(--accent-gradient);
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     color: white;
-    font-size: 16px;
+    font-size: 13px;
     position: relative;
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    flex-shrink: 0;
 }
 
 .user-info {
     flex: 1;
     position: relative;
     z-index: 1;
+    min-width: 0; /* Wichtig für text-overflow */
 }
 
 .user-name {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-role {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-secondary);
 }
 
 .user-profile i {
     color: var(--text-secondary);
     transition: transform 0.3s ease;
+    font-size: 12px;
+    flex-shrink: 0;
 }
 
 .user-profile:hover i {
