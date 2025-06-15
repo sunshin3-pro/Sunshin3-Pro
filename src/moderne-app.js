@@ -1076,18 +1076,27 @@ function getSubscriptionLabel(type) {
 }
 
 function getCurrentUsage() {
-    // This would get actual usage from API
-    // Escape HTML to prevent XSS
-    function escapeHtml(text) {
-        if (!text) return '';
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.toString().replace(/[&<>"']/g, m => map[m]);
+    // Get actual usage from current data
+    const stats = window.lastDashboardStats || {};
+    return {
+        invoices: stats.totalInvoices || 0,
+        customers: stats.totalCustomers || 0,
+        products: stats.totalProducts || 0,
+        revenue: stats.totalRevenue || 0
+    };
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, m => map[m]);
     }
 
 // Toast Notifications
