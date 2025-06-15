@@ -773,43 +773,545 @@ function showAddProductModal() {
 
 // Stub implementations for remaining functions
 async function loadInvoices() {
-    showToast('Invoices page loading...', 'info');
-    // Implementation would load invoices
+    const result = await window.api.getInvoices();
+    const invoices = result.success ? result.invoices : [];
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="page-content animate-fade-in">
+            <div class="page-actions">
+                <button class="btn-primary-modern" onclick="navigateTo('create-invoice')">
+                    <i class="fas fa-plus"></i>
+                    Neue Rechnung
+                </button>
+            </div>
+            
+            <div class="filters-modern">
+                <div class="search-box-modern">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Rechnungen suchen..." onkeyup="filterInvoices(this.value)">
+                </div>
+                <div class="filter-chips">
+                    <button class="chip active" onclick="filterByStatus('all')">Alle</button>
+                    <button class="chip" onclick="filterByStatus('draft')">Entwurf</button>
+                    <button class="chip" onclick="filterByStatus('sent')">Versendet</button>
+                    <button class="chip" onclick="filterByStatus('paid')">Bezahlt</button>
+                    <button class="chip" onclick="filterByStatus('overdue')">Überfällig</button>
+                </div>
+            </div>
+            
+            ${invoices.length > 0 ? `
+                <div class="table-container">
+                    <table class="table-modern" id="invoicesTable">
+                        <thead>
+                            <tr>
+                                <th>Nummer</th>
+                                <th>Kunde</th>
+                                <th>Datum</th>
+                                <th>Fälligkeit</th>
+                                <th>Betrag</th>
+                                <th>Status</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoices.map(invoice => `
+                                <tr data-status="${invoice.status}">
+                                    <td><strong>${invoice.invoice_number}</strong></td>
+                                    <td>${invoice.company_name || `${invoice.first_name} ${invoice.last_name}`}</td>
+                                    <td>${formatDate(invoice.invoice_date)}</td>
+                                    <td>${formatDate(invoice.due_date)}</td>
+                                    <td><strong>€${invoice.total}</strong></td>
+                                    <td><span class="badge-modern badge-${invoice.status}">${getStatusLabel(invoice.status)}</span></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon" onclick="viewInvoice(${invoice.id})" title="Ansehen">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="downloadInvoicePDF(${invoice.id})" title="PDF">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="sendInvoiceEmail(${invoice.id})" title="E-Mail">
+                                                <i class="fas fa-envelope"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <h3>Keine Rechnungen vorhanden</h3>
+                    <p>Erstellen Sie Ihre erste Rechnung</p>
+                    <button class="btn-primary-modern" onclick="navigateTo('create-invoice')">
+                        <i class="fas fa-plus"></i>
+                        Erste Rechnung erstellen
+                    </button>
+                </div>
+            `}
+        </div>
+    `;
 }
 
 async function loadCreateInvoice() {
-    showToast('Create invoice page loading...', 'info');
-    // Implementation would load create invoice form
+    const customers = await window.api.getCustomers();
+    const products = await window.api.getProducts();
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="create-invoice-modern animate-fade-in">
+            <form id="createInvoiceForm" class="invoice-form">
+                <div class="form-section">
+                    <h3>Rechnungsdetails</h3>
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Rechnungsnummer</label>
+                            <input type="text" class="form-input-modern" id="invoiceNumber" value="RE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Rechnungsdatum</label>
+                            <input type="date" class="form-input-modern" id="invoiceDate" value="${new Date().toISOString().split('T')[0]}" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Fälligkeitsdatum</label>
+                            <input type="date" class="form-input-modern" id="dueDate" value="${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Kunde</h3>
+                    <div class="form-group-modern">
+                        <label class="form-label-modern">Kunde auswählen</label>
+                        <select class="form-input-modern" id="customerId" required>
+                            <option value="">-- Kunde wählen --</option>
+                            ${customers.customers?.map(customer => `
+                                <option value="${customer.id}">${customer.company_name || `${customer.first_name} ${customer.last_name}`}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Positionen</h3>
+                    <div id="invoiceItems">
+                        <div class="invoice-item" data-item-index="0">
+                            <div class="item-row">
+                                <div class="form-group-modern flex-3">
+                                    <label class="form-label-modern">Beschreibung</label>
+                                    <input type="text" class="form-input-modern" name="description" required>
+                                </div>
+                                <div class="form-group-modern flex-1">
+                                    <label class="form-label-modern">Menge</label>
+                                    <input type="number" class="form-input-modern" name="quantity" value="1" min="1" step="0.01" required>
+                                </div>
+                                <div class="form-group-modern flex-1">
+                                    <label class="form-label-modern">Preis</label>
+                                    <input type="number" class="form-input-modern" name="price" value="0" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group-modern flex-1">
+                                    <label class="form-label-modern">MwSt %</label>
+                                    <input type="number" class="form-input-modern" name="tax" value="19" min="0" max="100" required>
+                                </div>
+                                <button type="button" class="btn-icon remove-item" onclick="removeInvoiceItem(0)" style="display:none;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary-modern" onclick="addInvoiceItem()">
+                        <i class="fas fa-plus"></i>
+                        Position hinzufügen
+                    </button>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Zusammenfassung</h3>
+                    <div class="invoice-summary">
+                        <div class="summary-row">
+                            <span>Zwischensumme:</span>
+                            <span id="subtotal">€0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>MwSt:</span>
+                            <span id="taxAmount">€0.00</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Gesamt:</span>
+                            <span id="total">€0.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary-modern" onclick="navigateTo('invoices')">
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas fa-save"></i>
+                        Rechnung erstellen
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    // Initialize form handlers
+    initializeInvoiceForm();
+}
+
+// Initialize Invoice Form
+function initializeInvoiceForm() {
+    const form = document.getElementById('createInvoiceForm');
+    
+    // Calculate totals on input change
+    form.addEventListener('input', calculateInvoiceTotals);
+    
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const invoiceData = {
+            userId: currentUser?.id || 1,
+            customerId: parseInt(document.getElementById('customerId').value),
+            invoiceNumber: document.getElementById('invoiceNumber').value,
+            invoiceDate: document.getElementById('invoiceDate').value,
+            dueDate: document.getElementById('dueDate').value,
+            items: collectInvoiceItems(),
+            subtotal: parseFloat(document.getElementById('subtotal').textContent.replace('€', '')),
+            taxAmount: parseFloat(document.getElementById('taxAmount').textContent.replace('€', '')),
+            total: parseFloat(document.getElementById('total').textContent.replace('€', ''))
+        };
+        
+        const result = await window.api.createInvoice(invoiceData);
+        
+        if (result.success) {
+            showToast('Rechnung erfolgreich erstellt', 'success');
+            navigateTo('invoices');
+        } else {
+            showToast(result.error || 'Fehler beim Erstellen der Rechnung', 'error');
+        }
+    });
 }
 
 async function loadCustomers() {
-    showToast('Customers page loading...', 'info');
-    // Implementation would load customers
+    const result = await window.api.getCustomers();
+    const customers = result.success ? result.customers : [];
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="page-content animate-fade-in">
+            <div class="page-actions">
+                <button class="btn-primary-modern" onclick="showAddCustomerModal()">
+                    <i class="fas fa-plus"></i>
+                    Neuer Kunde
+                </button>
+            </div>
+            
+            <div class="filters-modern">
+                <div class="search-box-modern">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Kunden suchen..." onkeyup="filterCustomers(this.value)">
+                </div>
+                <div class="filter-chips">
+                    <button class="chip active" onclick="filterCustomerType('all')">Alle</button>
+                    <button class="chip" onclick="filterCustomerType('private')">Privat</button>
+                    <button class="chip" onclick="filterCustomerType('business')">Geschäft</button>
+                </div>
+            </div>
+            
+            ${customers.length > 0 ? `
+                <div class="table-container">
+                    <table class="table-modern" id="customersTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Typ</th>
+                                <th>E-Mail</th>
+                                <th>Telefon</th>
+                                <th>Stadt</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${customers.map(customer => `
+                                <tr data-type="${customer.type}">
+                                    <td><strong>${customer.company_name || `${customer.first_name} ${customer.last_name}`}</strong></td>
+                                    <td><span class="badge-modern badge-${customer.type}">${customer.type === 'business' ? 'Geschäft' : 'Privat'}</span></td>
+                                    <td>${customer.email || '-'}</td>
+                                    <td>${customer.phone || '-'}</td>
+                                    <td>${customer.city || '-'}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon" onclick="editCustomer(${customer.id})" title="Bearbeiten">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="deleteCustomer(${customer.id})" title="Löschen">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Keine Kunden vorhanden</h3>
+                    <p>Fügen Sie Ihren ersten Kunden hinzu</p>
+                    <button class="btn-primary-modern" onclick="showAddCustomerModal()">
+                        <i class="fas fa-plus"></i>
+                        Ersten Kunden hinzufügen
+                    </button>
+                </div>
+            `}
+        </div>
+    `;
 }
 
 async function loadProducts() {
-    showToast('Products page loading...', 'info');
-    // Implementation would load products
+    const result = await window.api.getProducts();
+    const products = result.success ? result.products : [];
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="page-content animate-fade-in">
+            <div class="page-actions">
+                <button class="btn-primary-modern" onclick="showAddProductModal()">
+                    <i class="fas fa-plus"></i>
+                    Neues Produkt
+                </button>
+            </div>
+            
+            <div class="filters-modern">
+                <div class="search-box-modern">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Produkte suchen..." onkeyup="filterProducts(this.value)">
+                </div>
+                <div class="filter-chips">
+                    <button class="chip active" onclick="filterProductType('all')">Alle</button>
+                    <button class="chip" onclick="filterProductType('product')">Produkte</button>
+                    <button class="chip" onclick="filterProductType('service')">Dienstleistungen</button>
+                </div>
+            </div>
+            
+            ${products.length > 0 ? `
+                <div class="table-container">
+                    <table class="table-modern" id="productsTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Typ</th>
+                                <th>SKU</th>
+                                <th>Preis</th>
+                                <th>MwSt</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${products.map(product => `
+                                <tr data-type="${product.type}">
+                                    <td><strong>${product.name}</strong></td>
+                                    <td><span class="badge-modern badge-${product.type}">${product.type === 'service' ? 'Dienstleistung' : 'Produkt'}</span></td>
+                                    <td>${product.sku || '-'}</td>
+                                    <td><strong>€${product.price}</strong></td>
+                                    <td>${product.tax_rate}%</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon" onclick="editProduct(${product.id})" title="Bearbeiten">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="deleteProduct(${product.id})" title="Löschen">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <h3>Keine Produkte vorhanden</h3>
+                    <p>Fügen Sie Ihr erstes Produkt hinzu</p>
+                    <button class="btn-primary-modern" onclick="showAddProductModal()">
+                        <i class="fas fa-plus"></i>
+                        Erstes Produkt hinzufügen
+                    </button>
+                </div>
+            `}
+        </div>
+    `;
 }
 
 async function loadReminders() {
-    showToast('Reminders page loading...', 'info');
-    // Implementation would load reminders
+    const result = await window.api.getReminders();
+    const reminders = result.success ? result.reminders : [];
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="page-content animate-fade-in">
+            <div class="page-header">
+                <h2>Mahnungen</h2>
+                <p>Überfällige und ausstehende Rechnungen</p>
+            </div>
+            
+            ${reminders.length > 0 ? `
+                <div class="table-container">
+                    <table class="table-modern">
+                        <thead>
+                            <tr>
+                                <th>Rechnung</th>
+                                <th>Kunde</th>
+                                <th>Betrag</th>
+                                <th>Fällig seit</th>
+                                <th>Tage überfällig</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reminders.map(reminder => `
+                                <tr>
+                                    <td><strong>${reminder.invoice_number}</strong></td>
+                                    <td>${reminder.company_name || `${reminder.first_name} ${reminder.last_name}`}</td>
+                                    <td><strong>€${reminder.total}</strong></td>
+                                    <td>${formatDate(reminder.due_date)}</td>
+                                    <td><span class="badge-modern badge-error">${Math.floor(reminder.days_overdue)} Tage</span></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon" onclick="sendReminder(${reminder.id})" title="Mahnung senden">
+                                                <i class="fas fa-paper-plane"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="markAsPaid(${reminder.id})" title="Als bezahlt markieren">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3>Keine überfälligen Rechnungen</h3>
+                    <p>Alle Rechnungen sind aktuell oder bezahlt</p>
+                </div>
+            `}
+        </div>
+    `;
 }
 
 async function loadCompanySettings() {
-    showToast('Company settings loading...', 'info');
-    // Implementation would load company settings
+    const result = await window.api.getCompanySettings();
+    const settings = result.success ? result.settings : {};
+    
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="settings-page animate-fade-in">
+            <div class="settings-header">
+                <h2>Unternehmensdaten</h2>
+                <p>Verwalten Sie Ihre Firmendaten und Kontaktinformationen</p>
+            </div>
+            
+            <form id="companySettingsForm" class="settings-form">
+                <div class="settings-section">
+                    <h3>Grunddaten</h3>
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Firmenname</label>
+                            <input type="text" class="form-input-modern" name="name" value="${settings.name || ''}" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">E-Mail</label>
+                            <input type="email" class="form-input-modern" name="email" value="${settings.email || ''}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Telefon</label>
+                            <input type="tel" class="form-input-modern" name="phone" value="${settings.phone || ''}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Website</label>
+                            <input type="url" class="form-input-modern" name="website" value="${settings.website || ''}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>Adresse</h3>
+                    <div class="form-group-modern">
+                        <label class="form-label-modern">Straße & Hausnummer</label>
+                        <input type="text" class="form-input-modern" name="address" value="${settings.address || ''}">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">PLZ</label>
+                            <input type="text" class="form-input-modern" name="postalCode" value="${settings.postalCode || ''}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Stadt</label>
+                            <input type="text" class="form-input-modern" name="city" value="${settings.city || ''}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Land</label>
+                            <input type="text" class="form-input-modern" name="country" value="${settings.country || 'Deutschland'}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas fa-save"></i>
+                        Änderungen speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    // Form submission
+    document.getElementById('companySettingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const companyData = Object.fromEntries(formData.entries());
+        
+        const result = await window.api.updateCompanySettings(companyData);
+        
+        if (result.success) {
+            showToast('Unternehmensdaten erfolgreich aktualisiert', 'success');
+        } else {
+            showToast(result.error || 'Fehler beim Speichern', 'error');
+        }
+    });
 }
 
 async function loadProfile() {
-    showToast('Profile page loading...', 'info');
-    // Implementation would load profile
+    showToast('Profile page - implementation needed', 'info');
 }
 
 async function loadSettings() {
-    showToast('Settings page loading...', 'info');
-    // Implementation would load settings
+    showToast('Settings page - implementation needed', 'info');
 }
 
 // Export functions for global access
