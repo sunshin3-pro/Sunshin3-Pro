@@ -1,0 +1,39 @@
+Mis à jour : 06 juin 2025
+
+Concédant: Sunshin3 GmbH, Vienne
+Logiciel: Sunshin3 Pro – logiciel de facturation et de gestion
+
+Octroi de licence
+Sunshin3 accorde à l’Utilisateur Final (« Vous ») une licence mondiale, non exclusive et non transférable pour utiliser le Logiciel selon ces conditions.
+
+Restrictions
+Vous ne pouvez pas :
+
+copier, modifier, analyser en rétro-ingénierie, décompiler ou désassembler le Logiciel ;
+
+le distribuer, louer, prêter ou donner à bail ;
+
+l’utiliser à des fins illégales ;
+
+enlever, modifier ou masquer les mentions de propriété intellectuelle.
+
+Droits d’auteur
+Tous les droits d’auteur et la propriété intellectuelle restent la propriété de Sunshin3. Cette licence ne confère aucun droit de propriété.
+
+Durée & Résiliation
+La présente EULA est effective de l’installation à la désinstallation. Elle est résiliée de plein droit en cas de violation. Vous devez cesser toute utilisation et détruire toutes les copies.
+
+Aucune Garantie
+Le Logiciel est fourni « tel quel », sans aucune garantie, expresse ou implicite, y compris de qualité marchande ou d’adaptation à un usage spécifique.
+
+Limitation de Responsabilité
+Sunshin3 ne peut être tenu responsable des dommages indirects, perte de profits, perte de données ou autres préjudices consécutifs. La responsabilité totale est limitée au prix d’achat.
+
+Composants tiers
+Tout composant tiers ou open-source inclus est soumis à sa licence propre, que vous devez respecter.
+
+Contrôle des Exportations
+Vous vous engagez à ne pas exporter le Logiciel vers des pays soumis à des restrictions d’exportation.
+
+Dispositions générales
+Cet accord est régi par le droit allemand. Lieu d'exécution et juridiction : Vienne. Si une clause est invalide, le reste demeure en vigueur.

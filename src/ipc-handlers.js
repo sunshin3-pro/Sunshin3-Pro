@@ -413,7 +413,7 @@ function setupIPC() {
   ipcMain.handle('test-mongo-connection', async (event) => {
     try {
       const mongoose = require('mongoose');
-      const uri = 'mongodb+srv://ertl92:t3DdIFE1SprL7VUe@cluster0.6hfl4fv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+      const uri = process.env.MONGODB_URI || 'mongodb+srv://ertl92:pzwh87E8hqzfH3YI@cluster0.6hfl4fv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
       
       await mongoose.connect(uri, {
         useNewUrlParser: true,

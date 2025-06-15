@@ -1,0 +1,39 @@
+Aggiornato: 06 giugno 2025
+
+Licenziante: Sunshin3 GmbH, Vienna
+Software: Sunshin3 Pro – software per fatturazione e gestione
+
+Concessione di Licenza
+Sunshin3 concede all'Utente Finale (“Lei”) una licenza mondiale, non esclusiva e non trasferibile per utilizzare il Software secondo questi termini.
+
+Restrizioni
+Non può:
+
+copiare, modificare, eseguire reverse engineering, decompilare o disassemblare il Software;
+
+distribuire, affittare, concedere in lease o prestare;
+
+usarlo per attività illegali;
+
+rimuovere, modificare o oscurare avvisi di proprietà intellettuale.
+
+Copyright
+Tutti i diritti d'autore e di proprietà intellettuale restano di Sunshin3. Questa licenza non trasferisce la proprietà.
+
+Durata & Risoluzione
+Questa EULA è effettiva dall'installazione alla disinstallazione. Si revoca automaticamente in caso di violazione dei termini. Dovrà cessare l'uso e eliminare tutte le copie.
+
+Nessuna Garanzia
+Il Software viene fornito “così com'è”, senza alcuna garanzia, espressa o implicita, incluse commerciabilità o idoneità a uno scopo specifico.
+
+Limitazione della Responsabilità
+Sunshin3 non è responsabile per danni indiretti, mancati guadagni, perdita di dati o altri danni incidentali o consequenziali. La responsabilità totale è limitata al prezzo di acquisto.
+
+Componenti di Terzi
+Componenti di terzi o open-source inclusi sono soggetti alle proprie licenze, che deve rispettare.
+
+Controllo delle Esportazioni
+Si impegna a non esportare il Software in paesi soggetti a restrizioni d’esportazione.
+
+Generale
+Il presente accordo è regolato dalla legge tedesca. Luogo di adempimento e giurisdizione: Vienna. Se una clausola è invalida, il resto rimane efficace.

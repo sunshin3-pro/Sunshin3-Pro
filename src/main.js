@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron');
+require('dotenv').config();
 const path = require('path');
 const Store = require('electron-store');
 const { initDatabase } = require('./database');

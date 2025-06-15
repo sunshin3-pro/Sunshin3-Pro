@@ -37,15 +37,20 @@ contextBridge.exposeInMainWorld('api', {
   // Dashboard Stats
   getDashboardStats: () => ipcRenderer.invoke('get-dashboard-stats'),
   getAdminActivities: (limit) => ipcRenderer.invoke('get-admin-activities', limit),
+  
+  // Customer Functions
+  getCustomers: () => ipcRenderer.invoke('get-customers'),
   addCustomer: (customer) => ipcRenderer.invoke('add-customer', customer),
   updateCustomer: (id, customer) => ipcRenderer.invoke('update-customer', id, customer),
   deleteCustomer: (id) => ipcRenderer.invoke('delete-customer', id),
   
+  // Product Functions
   getProducts: () => ipcRenderer.invoke('get-products'),
   addProduct: (product) => ipcRenderer.invoke('add-product', product),
   updateProduct: (id, product) => ipcRenderer.invoke('update-product', id, product),
   deleteProduct: (id) => ipcRenderer.invoke('delete-product', id),
   
+  // Invoice Functions
   getInvoices: () => ipcRenderer.invoke('get-invoices'),
   getInvoice: (id) => ipcRenderer.invoke('get-invoice', id),
   createInvoice: (invoice) => ipcRenderer.invoke('create-invoice', invoice),
