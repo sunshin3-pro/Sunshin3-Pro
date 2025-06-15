@@ -614,6 +614,45 @@ function setupIPC() {
   // Get Settings
   ipcMain.handle('get-settings', async (event) => {
     try {
+      const userId = 1;
+      const settings = db.prepare('SELECT key, value FROM settings WHERE user_id = ?').all(userId);
+      const settingsObj = {};
+      settings.forEach(setting => {
+        settingsObj[setting.key] = setting.value;
+      });
+      return { success: true, settings: settingsObj };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Update Settings
+  ipcMain.handle('update-settings', async (event, settings) => {
+    try {
+      const userId = 1;
+      
+      for (const [key, value] of Object.entries(settings)) {
+        const existing = db.prepare('SELECT id FROM settings WHERE user_id = ? AND key = ?')
+          .get(userId, key);
+        
+        if (existing) {
+          db.prepare('UPDATE settings SET value = ? WHERE user_id = ? AND key = ?')
+            .run(value, userId, key);
+        } else {
+          db.prepare('INSERT INTO settings (user_id, key, value) VALUES (?, ?, ?)')
+            .run(userId, key, value);
+        }
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Get Settings
+  ipcMain.handle('get-settings', async (event) => {
+    try {
       const userId = 1; // Für Demo
       const settings = db.prepare('SELECT key, value FROM settings WHERE user_id = ?').all(userId);
       const settingsObj = {};
