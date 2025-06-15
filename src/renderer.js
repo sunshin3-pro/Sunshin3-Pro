@@ -156,31 +156,63 @@ function initializeEventListeners() {
         });
     }
 
-    // Normal Login Form
+    // Normal Login Form - FIXED
     if (loginForm) {
+        console.log('🔐 Setting up login form event listener');
+        
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('🚀 Login form submitted');
             
-            const email = emailInput.value;
-            const password = document.getElementById('passwordInput').value;
+            const email = emailInput ? emailInput.value : '';
+            const password = passwordInput ? passwordInput.value : '';
             
-            // Speichere E-Mail wenn Remember Me aktiviert
-            if (typeof saveEmail === 'function') {
-                saveEmail(email);
+            console.log('Login attempt:', { email: email, password: '***' });
+            
+            if (!email || !password) {
+                console.error('❌ Email or password missing');
+                showErrorWithAnimation('Bitte E-Mail und Passwort eingeben');
+                return;
             }
             
-            const result = await window.api.userLogin(email, password);
+            // Show loading state
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Anmelden...';
+            }
             
-            if (result.success) {
-                showMainApp(result.user);
-            } else {
-                if (result.needsVerification) {
-                    showEmailVerificationMessage(email);
+            try {
+                console.log('🔄 Calling window.api.userLogin...');
+                const result = await window.api.userLogin(email, password);
+                console.log('✅ Login API response:', result);
+                
+                if (result.success) {
+                    console.log('🎉 Login successful!');
+                    showMainApp(result.user);
                 } else {
-                    showErrorWithAnimation(result.error || 'Anmeldung fehlgeschlagen');
+                    console.log('❌ Login failed:', result.error);
+                    if (result.needsVerification) {
+                        showEmailVerificationMessage(email);
+                    } else {
+                        showErrorWithAnimation(result.error || 'Anmeldung fehlgeschlagen');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Login error:', error);
+                showErrorWithAnimation('Verbindungsfehler. Bitte versuchen Sie es erneut.');
+            } finally {
+                // Reset button
+                if (loginBtn) {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<span>Anmelden</span><i class="fas fa-arrow-right"></i>';
                 }
             }
         });
+        
+        console.log('✅ Login form event listener added');
+    } else {
+        console.error('❌ Login form not found!');
     }
 
     // Language Dropdown
