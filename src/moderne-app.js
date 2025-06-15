@@ -1606,3 +1606,291 @@ window.editProduct = editProduct;
 window.deleteProduct = deleteProduct;
 window.sendReminder = sendReminder;
 window.markAsPaid = markAsPaid;
+window.showAddCustomerModal = showAddCustomerModal;
+window.showAddProductModal = showAddProductModal;
+window.toggleBusinessFields = toggleBusinessFields;
+window.closeModal = closeModal;
+window.closeCelebration = closeCelebration;
+window.getCurrentUser = getCurrentUser;
+window.getCurrentUsage = getCurrentUsage;
+window.escapeHtml = escapeHtml;
+window.showToast = showToast;
+
+// Helper functions for filtering and actions
+function filterInvoices(searchTerm) {
+    const table = document.getElementById('invoicesTable');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
+    });
+}
+
+function filterByStatus(status) {
+    const table = document.getElementById('invoicesTable');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const rowStatus = row.getAttribute('data-status');
+        row.style.display = status === 'all' || rowStatus === status ? '' : 'none';
+    });
+    
+    // Update active chip
+    document.querySelectorAll('.filter-chips .chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+
+function filterCustomers(searchTerm) {
+    const table = document.getElementById('customersTable');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
+    });
+}
+
+function filterCustomerType(type) {
+    const table = document.getElementById('customersTable');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const rowType = row.getAttribute('data-type');
+        row.style.display = type === 'all' || rowType === type ? '' : 'none';
+    });
+    
+    // Update active chip
+    document.querySelectorAll('.filter-chips .chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+
+function filterProducts(searchTerm) {
+    const table = document.getElementById('productsTable');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
+    });
+}
+
+function filterProductType(type) {
+    const table = document.getElementById('productsTable');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const rowType = row.getAttribute('data-type');
+        row.style.display = type === 'all' || rowType === type ? '' : 'none';
+    });
+    
+    // Update active chip
+    document.querySelectorAll('.filter-chips .chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+
+// Invoice item management functions
+function addInvoiceItem() {
+    const itemsContainer = document.getElementById('invoiceItems');
+    const itemIndex = itemsContainer.children.length;
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'invoice-item';
+    newItem.dataset.itemIndex = itemIndex;
+    newItem.innerHTML = `
+        <div class="item-row">
+            <div class="form-group-modern flex-3">
+                <label class="form-label-modern">Beschreibung</label>
+                <input type="text" class="form-input-modern" name="description" required>
+            </div>
+            <div class="form-group-modern flex-1">
+                <label class="form-label-modern">Menge</label>
+                <input type="number" class="form-input-modern" name="quantity" value="1" min="1" step="0.01" required>
+            </div>
+            <div class="form-group-modern flex-1">
+                <label class="form-label-modern">Preis</label>
+                <input type="number" class="form-input-modern" name="price" value="0" min="0" step="0.01" required>
+            </div>
+            <div class="form-group-modern flex-1">
+                <label class="form-label-modern">MwSt %</label>
+                <input type="number" class="form-input-modern" name="tax" value="19" min="0" max="100" required>
+            </div>
+            <button type="button" class="btn-icon remove-item" onclick="removeInvoiceItem(${itemIndex})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    itemsContainer.appendChild(newItem);
+    
+    // Show remove button on first item if there are multiple items
+    if (itemsContainer.children.length > 1) {
+        itemsContainer.querySelector('.remove-item').style.display = 'block';
+    }
+}
+
+function removeInvoiceItem(index) {
+    const item = document.querySelector(`[data-item-index="${index}"]`);
+    if (item) {
+        item.remove();
+        calculateInvoiceTotals();
+        
+        // Hide remove button if only one item left
+        const items = document.querySelectorAll('.invoice-item');
+        if (items.length === 1) {
+            items[0].querySelector('.remove-item').style.display = 'none';
+        }
+    }
+}
+
+function calculateInvoiceTotals() {
+    let subtotal = 0;
+    let taxAmount = 0;
+    
+    document.querySelectorAll('.invoice-item').forEach(item => {
+        const quantity = parseFloat(item.querySelector('[name="quantity"]').value) || 0;
+        const price = parseFloat(item.querySelector('[name="price"]').value) || 0;
+        const tax = parseFloat(item.querySelector('[name="tax"]').value) || 0;
+        
+        const itemTotal = quantity * price;
+        const itemTax = itemTotal * (tax / 100);
+        
+        subtotal += itemTotal;
+        taxAmount += itemTax;
+    });
+    
+    const total = subtotal + taxAmount;
+    
+    document.getElementById('subtotal').textContent = `€${subtotal.toFixed(2)}`;
+    document.getElementById('taxAmount').textContent = `€${taxAmount.toFixed(2)}`;
+    document.getElementById('total').textContent = `€${total.toFixed(2)}`;
+}
+
+function collectInvoiceItems() {
+    const items = [];
+    
+    document.querySelectorAll('.invoice-item').forEach(item => {
+        const description = item.querySelector('[name="description"]').value;
+        const quantity = parseFloat(item.querySelector('[name="quantity"]').value);
+        const unitPrice = parseFloat(item.querySelector('[name="price"]').value);
+        const taxRate = parseFloat(item.querySelector('[name="tax"]').value);
+        
+        const total = quantity * unitPrice * (1 + taxRate / 100);
+        
+        items.push({
+            description,
+            quantity,
+            unitPrice,
+            taxRate,
+            total: total.toFixed(2)
+        });
+    });
+    
+    return items;
+}
+
+// Action functions
+async function viewInvoice(id) {
+    showToast('Öffne Rechnung...', 'info');
+    // Implementation would open invoice view
+}
+
+async function downloadInvoicePDF(id) {
+    const result = await window.api.generateInvoicePDF(id);
+    
+    if (result.success) {
+        showToast('PDF erfolgreich erstellt: ' + result.path, 'success');
+    } else {
+        showToast('Fehler beim Erstellen der PDF', 'error');
+    }
+}
+
+async function sendInvoiceEmail(id) {
+    showToast('E-Mail wird versendet...', 'info');
+    // Implementation would send email
+}
+
+async function editCustomer(id) {
+    showToast('Kunde bearbeiten...', 'info');
+    // Implementation would open edit modal
+}
+
+async function deleteCustomer(id) {
+    if (confirm('Möchten Sie diesen Kunden wirklich löschen?')) {
+        const result = await window.api.deleteCustomer(id);
+        
+        if (result.success) {
+            showToast('Kunde erfolgreich gelöscht', 'success');
+            navigateTo('customers');
+        } else {
+            showToast('Fehler beim Löschen', 'error');
+        }
+    }
+}
+
+async function editProduct(id) {
+    showToast('Produkt bearbeiten...', 'info');
+    // Implementation would open edit modal
+}
+
+async function deleteProduct(id) {
+    if (confirm('Möchten Sie dieses Produkt wirklich löschen?')) {
+        const result = await window.api.deleteProduct(id);
+        
+        if (result.success) {
+            showToast('Produkt erfolgreich gelöscht', 'success');
+            navigateTo('products');
+        } else {
+            showToast('Fehler beim Löschen', 'error');
+        }
+    }
+}
+
+async function sendReminder(invoiceId) {
+    showToast('Mahnung wird gesendet...', 'info');
+    // Implementation for sending reminder
+}
+
+async function markAsPaid(invoiceId) {
+    const result = await window.api.updateInvoiceStatus(invoiceId, 'paid');
+    
+    if (result.success) {
+        showToast('Rechnung als bezahlt markiert', 'success');
+        loadReminders(); // Reload the page
+    } else {
+        showToast('Fehler beim Aktualisieren', 'error');
+    }
+}
+
+// Export all required functions to window for onclick handlers
+window.filterInvoices = filterInvoices;
+window.filterByStatus = filterByStatus;
+window.filterCustomers = filterCustomers;
+window.filterCustomerType = filterCustomerType;
+window.filterProducts = filterProducts;
+window.filterProductType = filterProductType;
+window.addInvoiceItem = addInvoiceItem;
+window.removeInvoiceItem = removeInvoiceItem;
+window.calculateInvoiceTotals = calculateInvoiceTotals;
+window.collectInvoiceItems = collectInvoiceItems;
+window.viewInvoice = viewInvoice;
+window.downloadInvoicePDF = downloadInvoicePDF;
+window.sendInvoiceEmail = sendInvoiceEmail;
+window.editCustomer = editCustomer;
+window.deleteCustomer = deleteCustomer;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.sendReminder = sendReminder;
+window.markAsPaid = markAsPaid;
