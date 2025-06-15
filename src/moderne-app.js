@@ -121,6 +121,8 @@ async function loadDashboard() {
     const stats = await window.api.getDashboardStats();
     const recentInvoices = await window.api.getInvoices();
     
+    console.log('Dashboard stats:', stats); // Debug
+    
     const contentArea = document.getElementById('contentArea');
     contentArea.innerHTML = `
         <div class="dashboard-modern animate-fade-in">
@@ -134,32 +136,56 @@ async function loadDashboard() {
                     <div class="stat-icon-wrapper">
                         <i class="fas fa-file-invoice"></i>
                     </div>
-                    <div class="stat-value">${stats.stats?.totalInvoices || 0}</div>
-                    <div class="stat-label">Gesamte Rechnungen</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.stats?.totalInvoices || 0}</div>
+                        <div class="stat-label">Gesamte Rechnungen</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>+12% diesen Monat</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="stat-card-modern">
                     <div class="stat-icon-wrapper">
                         <i class="fas fa-users"></i>
                     </div>
-                    <div class="stat-value">${stats.stats?.totalCustomers || 0}</div>
-                    <div class="stat-label">Kunden</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.stats?.totalCustomers || 0}</div>
+                        <div class="stat-label">Kunden</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>+8% diesen Monat</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="stat-card-modern">
                     <div class="stat-icon-wrapper">
                         <i class="fas fa-euro-sign"></i>
                     </div>
-                    <div class="stat-value">€0</div>
-                    <div class="stat-label">Offene Beträge</div>
+                    <div class="stat-content">
+                        <div class="stat-value">€${stats.stats?.pendingAmount?.toFixed(2) || '0.00'}</div>
+                        <div class="stat-label">Offene Beträge</div>
+                        <div class="stat-change">
+                            <i class="fas fa-clock"></i>
+                            <span>Zu erhalten</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="stat-card-modern">
                     <div class="stat-icon-wrapper">
                         <i class="fas fa-chart-line"></i>
                     </div>
-                    <div class="stat-value">€0</div>
-                    <div class="stat-label">Monatsumsatz</div>
+                    <div class="stat-content">
+                        <div class="stat-value">€${stats.stats?.totalRevenue?.toFixed(2) || '0.00'}</div>
+                        <div class="stat-label">Gesamtumsatz</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>+15% diesen Monat</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -202,12 +228,12 @@ async function loadDashboard() {
                             <tbody>
                                 ${recentInvoices.invoices.slice(0, 5).map(invoice => `
                                     <tr>
-                                        <td>${invoice.invoice_number}</td>
+                                        <td><strong>${invoice.invoice_number}</strong></td>
                                         <td>${invoice.company_name || `${invoice.first_name} ${invoice.last_name}`}</td>
-                                        <td>€${invoice.total}</td>
+                                        <td><strong>€${invoice.total}</strong></td>
                                         <td><span class="badge-modern badge-${invoice.status}">${getStatusLabel(invoice.status)}</span></td>
                                         <td>
-                                            <button class="btn-icon" onclick="viewInvoice(${invoice.id})">
+                                            <button class="btn-icon" onclick="viewInvoice(${invoice.id})" title="Ansehen">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </td>
@@ -217,7 +243,19 @@ async function loadDashboard() {
                         </table>
                     </div>
                 </div>
-            ` : ''}
+            ` : `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <h3>Noch keine Rechnungen</h3>
+                    <p>Erstellen Sie Ihre erste Rechnung um loszulegen</p>
+                    <button class="btn-primary-modern" onclick="navigateTo('create-invoice')">
+                        <i class="fas fa-plus"></i>
+                        Erste Rechnung erstellen
+                    </button>
+                </div>
+            `}
         </div>
     `;
 }
