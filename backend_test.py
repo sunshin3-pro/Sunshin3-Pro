@@ -128,7 +128,7 @@ class ElectronInvoiceAppTester(unittest.TestCase):
             
         required_components = [
             'languageSelection', 'loginScreen', 'mainApp', 
-            'modern-sidebar', 'modern-header', 'contentArea',
+            'modern-sidebar', 'pageTitle', 'contentArea',
             'modalContainer', 'subscriptionInfo'
         ]
         
