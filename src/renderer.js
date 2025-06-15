@@ -100,31 +100,11 @@ function initializeEventListeners() {
     const adminCodeSection = document.getElementById('adminCodeSection');
     const codeInputs = document.querySelectorAll('.code-input');
     
-    // E-Mail Input Handler
+    // E-Mail Input Handler - NO ADMIN MODE DETECTION
     if (emailInput) {
         emailInput.addEventListener('input', async (e) => {
-            const email = e.target.value;
-            
-            // Prüfe ob Admin-Email
-            const isAdmin = await window.api.checkAdminEmail(email);
-            
-            if (isAdmin && !isAdminMode) {
-                // Aktiviere Admin-Modus mit Animation
-                isAdminMode = true;
-                adminEmail = email;
-                
-                passwordGroup.style.opacity = '0';
-                passwordGroup.style.transform = 'translateY(-10px)';
-                
-                setTimeout(() => {
-                    passwordGroup.style.display = 'none';
-                    loginForm.style.display = 'none';
-                    adminCodeSection.classList.remove('hidden');
-                    
-                    // Focus auf ersten Code-Input
-                    codeInputs[0].focus();
-                }, 300);
-            }
+            // Admin detection removed - will be handled in profile
+            console.log('Email input:', e.target.value);
         });
     }
 
