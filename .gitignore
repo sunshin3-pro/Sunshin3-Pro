@@ -6,3 +6,5 @@ node_modules/electron/dist/electron.exe
 dist/win-unpacked/Sunshin3 Pro.exe
 dist/win-unpacked/Sunshin3 Pro.exe
 /dist
+backend_test.py
+backend_test.py
