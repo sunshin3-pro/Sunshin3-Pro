@@ -104,6 +104,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Login Submit Handler - Separiert für bessere Performance
+async function handleLoginSubmit(e) {
+    e.preventDefault();
+    console.log('🚀 Login form submitted');
+    
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value : '';
+    
+    console.log('Login attempt:', { 
+        email: email, 
+        password: password ? '***' : 'EMPTY',
+        emailLength: email.length,
+        passwordLength: password.length
+    });
+    
+    if (!email || !password) {
+        console.error('❌ Email or password missing');
+        showErrorWithAnimation('Bitte E-Mail und Passwort eingeben');
+        return;
+    }
+    
+    // Loading state
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Anmelden...';
+    }
+    
+    try {
+        console.log('🔄 Calling window.api.userLogin...');
+        
+        if (!window.api || !window.api.userLogin) {
+            throw new Error('window.api.userLogin not available');
+        }
+        
+        const result = await window.api.userLogin(email, password);
+        console.log('✅ Login API response:', result);
+        
+        if (result && result.success) {
+            console.log('🎉 Login successful!');
+            showMainApp(result.user);
+        } else {
+            console.log('❌ Login failed:', result ? result.error : 'No result');
+            if (result && result.needsVerification) {
+                showEmailVerificationMessage(email);
+            } else {
+                showErrorWithAnimation(result ? result.error : 'Anmeldung fehlgeschlagen');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Login error:', error);
+        showErrorWithAnimation('Verbindungsfehler. Bitte versuchen Sie es erneut.');
+    } finally {
+        // Reset button
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<span>Anmelden</span><i class="fas fa-arrow-right"></i>';
+        }
+    }
+}
+
 // Event Listener initialisieren
 function initializeEventListeners() {
     console.log('🔧 Initializing event listeners...');
