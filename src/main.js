@@ -35,8 +35,10 @@ function createWindow() {
     minHeight: 700,
     icon: path.join(__dirname, '../assets/icon.png'),
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
+      nodeIntegration: true,          // ENABLE for JavaScript execution
+      contextIsolation: false,        // DISABLE for window.api access
+      enableRemoteModule: true,       // ENABLE for full functionality
+      webSecurity: false,            // DISABLE for local files
       preload: path.join(__dirname, 'preload.js')
     },
     show: false,
