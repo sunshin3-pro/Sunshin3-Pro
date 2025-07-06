@@ -14,6 +14,17 @@ let currentSession = {
   isAdmin: false
 };
 
+function getStatusLabel(status) {
+  const labels = {
+    'draft': 'Entwurf',
+    'sent': 'Versendet', 
+    'paid': 'Bezahlt',
+    'overdue': 'Überfällig',
+    'cancelled': 'Storniert'
+  };
+  return labels[status] || status;
+}
+
 function getCurrentUserId() {
   return currentSession.userId || null;
 }
