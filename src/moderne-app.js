@@ -10,6 +10,28 @@ let subscriptionLimits = {
 // Store dashboard stats globally for usage tracking
 window.lastDashboardStats = {};
 
+// Get current usage based on subscription limits
+function getCurrentUsage() {
+    const stats = window.lastDashboardStats || {};
+    const subscription = currentUser?.subscription_type || 'trial';
+    const limits = subscriptionLimits[subscription] || subscriptionLimits.trial;
+    
+    return {
+        invoices: {
+            current: stats.totalInvoices || 0,
+            limit: limits.invoices
+        },
+        customers: {
+            current: stats.totalCustomers || 0,
+            limit: limits.customers
+        },
+        products: {
+            current: stats.totalProducts || 0,
+            limit: limits.products
+        }
+    };
+}
+
 // Admin configuration
 const ADMIN_EMAIL = 'ertl92@gmx.net';
 
