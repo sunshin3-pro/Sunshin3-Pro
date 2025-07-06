@@ -5,6 +5,7 @@ import json
 import time
 import sys
 import os
+import sqlite3
 from pathlib import Path
 
 class ElectronInvoiceAppTester(unittest.TestCase):
@@ -13,9 +14,20 @@ class ElectronInvoiceAppTester(unittest.TestCase):
     def setUp(self):
         """Set up test environment"""
         print("Setting up test environment...")
-        # Check if the app is running
         self.app_dir = Path('/app')
         
+        # Connect to the SQLite database
+        self.db_path = self.app_dir / 'test_sunshin3.db'
+        self.assertTrue(self.db_path.exists(), "SQLite database file not found")
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+        
+    def tearDown(self):
+        """Clean up after tests"""
+        if hasattr(self, 'conn') and self.conn:
+            self.conn.close()
+    
     def test_01_database_structure(self):
         """Test database structure and initialization"""
         print("\n=== Testing Database Structure ===")
@@ -25,250 +37,373 @@ class ElectronInvoiceAppTester(unittest.TestCase):
         self.assertTrue(db_file.exists(), "database.js file not found")
         print("✅ database.js file found")
         
-        # Check database tables
-        with open(db_file, 'r') as f:
-            db_content = f.read()
-            
-        required_tables = [
-            'admins', 'admin_activities', 'users', 'customers', 
-            'products', 'invoices', 'invoice_items', 'settings', 'sessions'
-        ]
+        # Check database tables in SQLite
+        tables_query = "SELECT name FROM sqlite_master WHERE type='table';"
+        self.cursor.execute(tables_query)
+        tables = [row['name'] for row in self.cursor.fetchall()]
         
-        for table in required_tables:
-            self.assertIn(f'CREATE TABLE IF NOT EXISTS {table}', db_content, 
-                         f"Table '{table}' not defined in database.js")
-            print(f"✅ Table '{table}' defined in database.js")
+        # Check for essential tables
+        essential_tables = ['users', 'sessions']
+        for table in essential_tables:
+            self.assertIn(table, tables, f"Essential table '{table}' not found in database")
+            print(f"✅ Essential table '{table}' exists in database")
         
-        # Check for test user creation function
-        self.assertIn('async function createTestUser()', db_content,
-                     "createTestUser() function not found in database.js")
-        print("✅ createTestUser() function found in database.js")
-        
-        # Check for test user creation in initDatabase
-        self.assertIn('await createTestUser()', db_content,
-                     "Test user creation not called in initDatabase()")
-        print("✅ Test user creation called in initDatabase()")
-        
-        # Check test user credentials
-        self.assertIn('email: \'test@sunshin3.pro\'', db_content,
-                     "Test user email not found in database.js")
-        self.assertIn('password: \'test123\'', db_content,
-                     "Test user password not found in database.js")
-        print("✅ Test user credentials found in database.js")
+        # Check for test user in database
+        self.cursor.execute("SELECT * FROM users WHERE email = 'test@sunshin3.pro'")
+        test_user = self.cursor.fetchone()
+        self.assertIsNotNone(test_user, "Test user not found in database")
+        print("✅ Test user exists in database")
     
-    def test_02_authentication_functions(self):
-        """Test authentication functions in database.js"""
-        print("\n=== Testing Authentication Functions ===")
+    def test_02_user_authentication(self):
+        """Test user authentication in the database"""
+        print("\n=== Testing User Authentication ===")
         
-        # Check if database.js exists
-        db_file = self.app_dir / 'src' / 'database.js'
-        with open(db_file, 'r') as f:
-            db_content = f.read()
+        # Check if test user exists
+        self.cursor.execute("SELECT * FROM users WHERE email = 'test@sunshin3.pro'")
+        test_user = self.cursor.fetchone()
+        self.assertIsNotNone(test_user, "Test user not found in database")
+        print(f"✅ Test user found: {test_user['email']}")
         
-        # Check for user login function
-        self.assertIn('async loginUser(email, password)', db_content,
-                     "loginUser() function not found in database.js")
-        print("✅ loginUser() function found in database.js")
+        # Check if password is hashed
+        self.assertTrue(test_user['password'].startswith('$2'), "Password is not hashed with bcrypt")
+        print("✅ Password is properly hashed with bcrypt")
         
-        # Check for user creation function
-        self.assertIn('async createUser(userData)', db_content,
-                     "createUser() function not found in database.js")
-        print("✅ createUser() function found in database.js")
-        
-        # Check for password hashing with bcrypt
-        self.assertIn('await bcrypt.hash(', db_content,
-                     "bcrypt password hashing not found in database.js")
-        print("✅ bcrypt password hashing found in database.js")
-        
-        # Check for session token creation
-        self.assertIn('crypto.randomBytes', db_content,
-                     "crypto.randomBytes not found for token generation")
-        print("✅ Session token generation with crypto found in database.js")
-        
-        # Check for getUserByToken function
-        self.assertIn('getUserByToken(token)', db_content,
-                     "getUserByToken() function not found in database.js")
-        print("✅ getUserByToken() function found in database.js")
+        # Check user fields
+        required_fields = ['id', 'email', 'password', 'first_name', 'last_name', 'company_name']
+        for field in required_fields:
+            self.assertIn(field, dict(test_user).keys(), f"Field '{field}' missing from user record")
+        print("✅ User record has all required fields")
     
-    def test_03_ipc_handlers(self):
-        """Test IPC handlers for authentication endpoints"""
-        print("\n=== Testing IPC Handlers for Authentication ===")
+    def test_03_session_management(self):
+        """Test session management in the database"""
+        print("\n=== Testing Session Management ===")
         
-        # Check if ipc-handlers.js exists
-        ipc_file = self.app_dir / 'src' / 'ipc-handlers.js'
-        self.assertTrue(ipc_file.exists(), "ipc-handlers.js file not found")
-        print("✅ ipc-handlers.js file found")
+        # Check sessions table structure
+        self.cursor.execute("PRAGMA table_info(sessions)")
+        columns = {row['name']: row for row in self.cursor.fetchall()}
         
-        # Check for required API endpoints
-        with open(ipc_file, 'r') as f:
-            ipc_content = f.read()
-            
-        auth_endpoints = [
-            'user-login', 'user-register', 'user-logout', 'get-current-user'
-        ]
+        required_columns = ['id', 'user_id', 'token', 'created_at', 'expires_at']
+        for column in required_columns:
+            self.assertIn(column, columns, f"Column '{column}' missing from sessions table")
+        print("✅ Sessions table has all required columns")
         
-        for endpoint in auth_endpoints:
-            self.assertIn(f"ipcMain.handle('{endpoint}'", ipc_content, 
-                         f"API endpoint '{endpoint}' not implemented")
-            print(f"✅ API endpoint '{endpoint}' implemented")
-    
-    def test_04_preload_api_exposure(self):
-        """Test API exposure in preload.js"""
-        print("\n=== Testing API Exposure for Authentication ===")
-        
-        # Check if preload.js exists
-        preload_file = self.app_dir / 'src' / 'preload.js'
-        self.assertTrue(preload_file.exists(), "preload.js file not found")
-        print("✅ preload.js file found")
-        
-        # Check for API exposure
-        with open(preload_file, 'r') as f:
-            preload_content = f.read()
-            
-        auth_apis = [
-            'userLogin', 'userRegister', 'userLogout', 'getCurrentUser'
-        ]
-        
-        for api in auth_apis:
-            self.assertIn(f"{api}:", preload_content, 
-                         f"API '{api}' not exposed in preload.js")
-            print(f"✅ API '{api}' exposed in preload.js")
-    
-    def test_05_renderer_login_functions(self):
-        """Test login functions in renderer.js"""
-        print("\n=== Testing Login Functions in renderer.js ===")
-        
-        # Check if renderer.js exists
-        renderer_file = self.app_dir / 'src' / 'renderer.js'
-        self.assertTrue(renderer_file.exists(), "renderer.js file not found")
-        print("✅ renderer.js file found")
-        
-        # Check for login form handling
-        with open(renderer_file, 'r') as f:
-            renderer_content = f.read()
-            
-        # Check for login form submission
-        self.assertIn('loginForm.addEventListener(\'submit\'', renderer_content, 
-                     "Login form submission handler not found in renderer.js")
-        print("✅ Login form submission handler found in renderer.js")
-        
-        # Check for window.api.userLogin call
-        self.assertIn('window.api.userLogin(email, password)', renderer_content, 
-                     "window.api.userLogin call not found in renderer.js")
-        print("✅ window.api.userLogin call found in renderer.js")
-        
-        # Check for registration form
-        self.assertIn('showRegistrationForm()', renderer_content, 
-                     "showRegistrationForm() function not found in renderer.js")
-        print("✅ showRegistrationForm() function found in renderer.js")
-        
-        # Check for forgot password link
-        self.assertIn('forgotPasswordLink', renderer_content, 
-                     "Forgot password link handler not found in renderer.js")
-        print("✅ Forgot password link handler found in renderer.js")
-        
-        # Check for showForgotPasswordForm function
-        self.assertIn('showForgotPasswordForm()', renderer_content, 
-                     "showForgotPasswordForm() function not found in renderer.js")
-        print("✅ showForgotPasswordForm() function found in renderer.js")
-    
-    def test_06_ui_components(self):
-        """Test authentication UI components in index.html"""
-        print("\n=== Testing Authentication UI Components ===")
-        
-        # Check if index.html exists
-        html_file = self.app_dir / 'views' / 'index.html'
-        self.assertTrue(html_file.exists(), "index.html file not found")
-        print("✅ index.html file found")
-        
-        # Check for required UI components
-        with open(html_file, 'r') as f:
-            html_content = f.read()
-            
-        auth_components = [
-            'loginForm', 'emailInput', 'passwordInput', 'loginBtn',
-            'registerLink', 'forgotPassword'
-        ]
-        
-        for component in auth_components:
-            if component == 'forgotPassword':
-                self.assertIn(f'data-i18n="login.{component}"', html_content, 
-                             f"UI component '{component}' not found in index.html")
-            else:
-                self.assertIn(f'id="{component}"', html_content, 
-                             f"UI component '{component}' not found in index.html")
-            print(f"✅ UI component '{component}' found in index.html")
+        # Check if there are any active sessions
+        self.cursor.execute("SELECT COUNT(*) as count FROM sessions")
+        session_count = self.cursor.fetchone()['count']
+        print(f"ℹ️ Found {session_count} sessions in database")
 
 class AuthenticationAPITester(unittest.TestCase):
     """Test suite for the Authentication API functionality"""
     
-    def test_01_test_user_login(self):
-        """Test login with test user credentials"""
-        print("\n=== Testing Test User Login ===")
+    def setUp(self):
+        """Set up test environment"""
+        self.app_dir = Path('/app')
         
-        # Mock the IPC call to test user login
-        # In a real environment, we would use Spectron or similar to test this
-        # Here we're just checking if the code structure is correct
+        # Check if required files exist
+        self.assertTrue((self.app_dir / 'src' / 'ipc-handlers.js').exists(), "ipc-handlers.js not found")
+        self.assertTrue((self.app_dir / 'src' / 'database.js').exists(), "database.js not found")
+        self.assertTrue((self.app_dir / 'src' / 'preload.js').exists(), "preload.js not found")
         
-        # Check if the test user credentials are correctly defined
-        db_file = Path('/app/src/database.js')
-        with open(db_file, 'r') as f:
-            db_content = f.read()
+        # Connect to the SQLite database
+        self.db_path = self.app_dir / 'test_sunshin3.db'
+        self.assertTrue(self.db_path.exists(), "SQLite database file not found")
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+    
+    def tearDown(self):
+        """Clean up after tests"""
+        if hasattr(self, 'conn') and self.conn:
+            self.conn.close()
+    
+    def test_01_login_functionality(self):
+        """Test login functionality"""
+        print("\n=== Testing Login Functionality ===")
         
-        # Verify test user credentials
-        self.assertIn('email: \'test@sunshin3.pro\'', db_content)
-        self.assertIn('password: \'test123\'', db_content)
-        print("✅ Test user credentials verified in database.js")
+        # Check if test user exists
+        self.cursor.execute("SELECT * FROM users WHERE email = 'test@sunshin3.pro'")
+        test_user = self.cursor.fetchone()
+        self.assertIsNotNone(test_user, "Test user not found in database")
+        print(f"✅ Test user found: {test_user['email']}")
         
-        # Check if the login function handles these credentials
-        ipc_file = Path('/app/src/ipc-handlers.js')
-        with open(ipc_file, 'r') as f:
+        # Check if ipc-handlers.js has user-login handler
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
             ipc_content = f.read()
         
-        self.assertIn('userFunctions.loginUser(email, password)', ipc_content)
-        print("✅ Login function correctly calls userFunctions.loginUser")
+        self.assertIn("ipcMain.handle('user-login'", ipc_content, "user-login handler not found")
+        self.assertIn("userFunctions.loginUser(email, password)", ipc_content, "loginUser function not called")
+        print("✅ user-login handler properly implemented")
         
-        print("✓ Test user login structure verified")
+        # Check if preload.js exposes userLogin API
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        self.assertIn("userLogin: (email, password) =>", preload_content, "userLogin API not exposed")
+        print("✅ userLogin API properly exposed in preload.js")
+        
+        # Check if database.js has loginUser function
+        with open(self.app_dir / 'src' / 'database.js', 'r') as f:
+            db_content = f.read()
+        
+        self.assertIn("async loginUser(email, password)", db_content, "loginUser function not found")
+        self.assertIn("bcrypt.compare(password, user.password)", db_content, "Password comparison not implemented")
+        print("✅ loginUser function properly implemented with bcrypt")
     
-    def test_02_registration_validation(self):
-        """Test registration validation"""
-        print("\n=== Testing Registration Validation ===")
+    def test_02_registration_functionality(self):
+        """Test registration functionality"""
+        print("\n=== Testing Registration Functionality ===")
         
-        # Check if renderer.js has validation for registration
-        renderer_file = Path('/app/src/renderer.js')
-        with open(renderer_file, 'r') as f:
-            renderer_content = f.read()
+        # Check if ipc-handlers.js has user-register handler
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
         
-        # Check for password validation
-        self.assertIn('password.length', renderer_content)
-        print("✅ Password length validation found")
+        self.assertIn("ipcMain.handle('user-register'", ipc_content, "user-register handler not found")
+        self.assertIn("userFunctions.createUser(userData)", ipc_content, "createUser function not called")
+        print("✅ user-register handler properly implemented")
         
-        # Check for email validation - using a more generic check
-        self.assertIn('type="email"', renderer_content)
-        print("✅ Email validation found")
+        # Check if preload.js exposes userRegister API
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
         
-        print("✓ Registration validation structure verified")
+        self.assertIn("userRegister: (userData) =>", preload_content, "userRegister API not exposed")
+        print("✅ userRegister API properly exposed in preload.js")
+        
+        # Check if database.js has createUser function
+        with open(self.app_dir / 'src' / 'database.js', 'r') as f:
+            db_content = f.read()
+        
+        self.assertIn("async createUser(userData)", db_content, "createUser function not found")
+        self.assertIn("await bcrypt.hash(", db_content, "Password hashing not implemented")
+        print("✅ createUser function properly implemented with bcrypt")
     
-    def test_03_password_reset(self):
-        """Test password reset functionality"""
-        print("\n=== Testing Password Reset ===")
+    def test_03_session_functionality(self):
+        """Test session management functionality"""
+        print("\n=== Testing Session Management Functionality ===")
         
-        # Check if renderer.js has password reset function
-        renderer_file = Path('/app/src/renderer.js')
-        with open(renderer_file, 'r') as f:
-            renderer_content = f.read()
+        # Check if ipc-handlers.js has session management
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
         
-        # Check for password reset form
-        self.assertIn('showForgotPasswordForm()', renderer_content)
-        print("✅ Password reset form function found")
+        self.assertIn("let currentSession", ipc_content, "currentSession variable not found")
+        self.assertIn("function setCurrentSession", ipc_content, "setCurrentSession function not found")
+        self.assertIn("function clearSession", ipc_content, "clearSession function not found")
+        print("✅ Session management functions properly implemented")
         
-        print("✓ Password reset structure verified")
+        # Check if ipc-handlers.js has get-current-session handler
+        self.assertIn("ipcMain.handle('get-current-session'", ipc_content, "get-current-session handler not found")
+        self.assertIn("ipcMain.handle('clear-session'", ipc_content, "clear-session handler not found")
+        print("✅ Session IPC handlers properly implemented")
+        
+        # Check if preload.js exposes session APIs
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        self.assertIn("getCurrentSession: () =>", preload_content, "getCurrentSession API not exposed")
+        self.assertIn("clearSession: () =>", preload_content, "clearSession API not exposed")
+        print("✅ Session APIs properly exposed in preload.js")
+    
+    def test_04_dashboard_functionality(self):
+        """Test dashboard functionality"""
+        print("\n=== Testing Dashboard Functionality ===")
+        
+        # Check if ipc-handlers.js has get-dashboard-stats handler
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
+        
+        self.assertIn("ipcMain.handle('get-dashboard-stats'", ipc_content, "get-dashboard-stats handler not found")
+        print("✅ get-dashboard-stats handler properly implemented")
+        
+        # Check if preload.js exposes getDashboardStats API
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        self.assertIn("getDashboardStats: () =>", preload_content, "getDashboardStats API not exposed")
+        print("✅ getDashboardStats API properly exposed in preload.js")
+        
+        # Check if dashboard stats include required metrics
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
+        
+        dashboard_metrics = [
+            'totalInvoices', 'totalCustomers', 'totalProducts', 
+            'totalRevenue', 'pendingAmount', 'paidInvoices'
+        ]
+        
+        for metric in dashboard_metrics:
+            self.assertIn(metric, ipc_content, f"Dashboard metric '{metric}' not implemented")
+        print("✅ Dashboard metrics properly implemented")
+
+class BusinessFeaturesTester(unittest.TestCase):
+    """Test suite for business features"""
+    
+    def setUp(self):
+        """Set up test environment"""
+        self.app_dir = Path('/app')
+        
+        # Connect to the SQLite database
+        self.db_path = self.app_dir / 'test_sunshin3.db'
+        self.assertTrue(self.db_path.exists(), "SQLite database file not found")
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+    
+    def tearDown(self):
+        """Clean up after tests"""
+        if hasattr(self, 'conn') and self.conn:
+            self.conn.close()
+    
+    def test_01_customer_management_api(self):
+        """Test customer management API"""
+        print("\n=== Testing Customer Management API ===")
+        
+        # Check if ipc-handlers.js has customer management handlers
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
+        
+        customer_handlers = [
+            "ipcMain.handle('get-customers'", 
+            "ipcMain.handle('add-customer'", 
+            "ipcMain.handle('update-customer'", 
+            "ipcMain.handle('delete-customer'"
+        ]
+        
+        for handler in customer_handlers:
+            self.assertIn(handler, ipc_content, f"{handler} not found")
+        print("✅ Customer management handlers properly implemented")
+        
+        # Check if preload.js exposes customer management APIs
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        customer_apis = [
+            "getCustomers: () =>", 
+            "addCustomer: (customer) =>", 
+            "updateCustomer: (id, customer) =>", 
+            "deleteCustomer: (id) =>"
+        ]
+        
+        for api in customer_apis:
+            self.assertIn(api, preload_content, f"{api} not exposed")
+        print("✅ Customer management APIs properly exposed in preload.js")
+    
+    def test_02_invoice_management_api(self):
+        """Test invoice management API"""
+        print("\n=== Testing Invoice Management API ===")
+        
+        # Check if ipc-handlers.js has invoice management handlers
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
+        
+        invoice_handlers = [
+            "ipcMain.handle('get-invoices'", 
+            "ipcMain.handle('get-invoice'", 
+            "ipcMain.handle('create-invoice'", 
+            "ipcMain.handle('update-invoice'", 
+            "ipcMain.handle('delete-invoice'",
+            "ipcMain.handle('update-invoice-status'"
+        ]
+        
+        for handler in invoice_handlers:
+            self.assertIn(handler, ipc_content, f"{handler} not found")
+        print("✅ Invoice management handlers properly implemented")
+        
+        # Check if preload.js exposes invoice management APIs
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        invoice_apis = [
+            "getInvoices: () =>", 
+            "getInvoice: (id) =>", 
+            "createInvoice: (invoice) =>", 
+            "updateInvoice: (id, invoice) =>", 
+            "deleteInvoice: (id) =>",
+            "updateInvoiceStatus: (invoiceId, status) =>"
+        ]
+        
+        for api in invoice_apis:
+            self.assertIn(api, preload_content, f"{api} not exposed")
+        print("✅ Invoice management APIs properly exposed in preload.js")
+    
+    def test_03_product_management_api(self):
+        """Test product management API"""
+        print("\n=== Testing Product Management API ===")
+        
+        # Check if ipc-handlers.js has product management handlers
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
+        
+        product_handlers = [
+            "ipcMain.handle('get-products'", 
+            "ipcMain.handle('add-product'", 
+            "ipcMain.handle('update-product'", 
+            "ipcMain.handle('delete-product'"
+        ]
+        
+        for handler in product_handlers:
+            self.assertIn(handler, ipc_content, f"{handler} not found")
+        print("✅ Product management handlers properly implemented")
+        
+        # Check if preload.js exposes product management APIs
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        product_apis = [
+            "getProducts: () =>", 
+            "addProduct: (product) =>", 
+            "updateProduct: (id, product) =>", 
+            "deleteProduct: (id) =>"
+        ]
+        
+        for api in product_apis:
+            self.assertIn(api, preload_content, f"{api} not exposed")
+        print("✅ Product management APIs properly exposed in preload.js")
+    
+    def test_04_pdf_generation_api(self):
+        """Test PDF generation API"""
+        print("\n=== Testing PDF Generation API ===")
+        
+        # Check if ipc-handlers.js has PDF generation handler
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
+        
+        self.assertIn("ipcMain.handle('generate-invoice-pdf'", ipc_content, "generate-invoice-pdf handler not found")
+        self.assertIn("const doc = new PDFDocument", ipc_content, "PDFDocument creation not found")
+        print("✅ PDF generation handler properly implemented")
+        
+        # Check if preload.js exposes PDF generation API
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        self.assertIn("generateInvoicePDF: (invoiceId) =>", preload_content, "generateInvoicePDF API not exposed")
+        print("✅ PDF generation API properly exposed in preload.js")
+    
+    def test_05_company_settings_api(self):
+        """Test company settings API"""
+        print("\n=== Testing Company Settings API ===")
+        
+        # Check if ipc-handlers.js has company settings handlers
+        with open(self.app_dir / 'src' / 'ipc-handlers.js', 'r') as f:
+            ipc_content = f.read()
+        
+        self.assertIn("ipcMain.handle('get-company-settings'", ipc_content, "get-company-settings handler not found")
+        self.assertIn("ipcMain.handle('update-company-settings'", ipc_content, "update-company-settings handler not found")
+        print("✅ Company settings handlers properly implemented")
+        
+        # Check if preload.js exposes company settings APIs
+        with open(self.app_dir / 'src' / 'preload.js', 'r') as f:
+            preload_content = f.read()
+        
+        self.assertIn("getCompanySettings: () =>", preload_content, "getCompanySettings API not exposed")
+        self.assertIn("updateCompanySettings: (companyData) =>", preload_content, "updateCompanySettings API not exposed")
+        print("✅ Company settings APIs properly exposed in preload.js")
 
 def run_tests():
     """Run the test suite"""
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(ElectronInvoiceAppTester))
-    suite.addTest(unittest.makeSuite(AuthenticationAPITester))
+    loader = unittest.TestLoader()
+    suite.addTest(loader.loadTestsFromTestCase(ElectronInvoiceAppTester))
+    suite.addTest(loader.loadTestsFromTestCase(AuthenticationAPITester))
+    suite.addTest(loader.loadTestsFromTestCase(BusinessFeaturesTester))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 

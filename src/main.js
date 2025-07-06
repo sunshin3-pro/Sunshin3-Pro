@@ -47,7 +47,7 @@ function createWindow() {
     backgroundColor: '#0F172A'
   });
 
-  // Lade die Startseite
+  // Lade die Startseite - TEMPORARILY LOADING TEST FILE
   mainWindow.loadFile(path.join(__dirname, '../views/index.html'));
 
   // DevTools im Dev-Modus

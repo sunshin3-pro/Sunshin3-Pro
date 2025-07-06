@@ -1,8 +1,10 @@
-const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('api', {
+const { ipcRenderer } = require('electron');
+console.log('🔄 PRELOAD.JS STARTING TO LOAD...');
+console.log('🔄 ipcRenderer loaded successfully');
+
+// Da contextIsolation: false ist, können wir direkt auf window zugreifen
+window.api = {
   // Session Management
   getCurrentSession: () => ipcRenderer.invoke('get-current-session'),
   clearSession: () => ipcRenderer.invoke('clear-session'),
@@ -115,4 +117,6 @@ contextBridge.exposeInMainWorld('api', {
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   }
-});
+};
+
+console.log('✅ window.api exposed successfully via preload.js');
