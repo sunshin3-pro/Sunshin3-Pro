@@ -668,7 +668,7 @@ function setupIPC() {
     }
   });
 
-  // PDF Generation
+  // PDF Generation - ERWEITERT für Business Features
   ipcMain.handle('generate-invoice-pdf', async (event, invoiceId) => {
     try {
       const userId = getCurrentUserId();
@@ -677,7 +677,9 @@ function setupIPC() {
       }
 
       const invoice = db.prepare(`
-        SELECT i.*, c.*, u.company_name as user_company
+        SELECT i.*, c.*, u.company_name as user_company, u.address as user_address,
+               u.city as user_city, u.postal_code as user_postal, u.country as user_country,
+               u.phone as user_phone, u.email as user_email
         FROM invoices i
         LEFT JOIN customers c ON i.customer_id = c.id
         LEFT JOIN users u ON i.user_id = u.id
@@ -692,52 +694,145 @@ function setupIPC() {
         SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY position
       `).all(invoiceId);
       
-      const doc = new PDFDocument({ margin: 50 });
-      const filename = `invoice_${invoice.invoice_number}.pdf`;
+      const doc = new PDFDocument({ 
+        margin: 50,
+        size: 'A4',
+        info: {
+          Title: `Rechnung ${invoice.invoice_number}`,
+          Author: invoice.user_company || 'Sunshin3 Pro',
+          Subject: `Rechnung für ${invoice.company_name || invoice.first_name + ' ' + invoice.last_name}`,
+          CreationDate: new Date()
+        }
+      });
+      
+      const filename = `rechnung_${invoice.invoice_number}_${new Date().toISOString().split('T')[0]}.pdf`;
       const filePath = path.join(require('electron').app.getPath('downloads'), filename);
       
       doc.pipe(fs.createWriteStream(filePath));
       
-      doc.fontSize(20).text(invoice.user_company || 'Sunshin3 Pro', 50, 50);
-      doc.fontSize(12).text('RECHNUNG', 50, 100);
+      // PROFESSIONELLER PDF-HEADER
+      doc.fontSize(20)
+         .fillColor('#2c3e50')
+         .text(invoice.user_company || 'Ihr Unternehmen', 50, 50);
       
-      doc.text(`Rechnungsnummer: ${invoice.invoice_number}`, 50, 130);
-      doc.text(`Datum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}`, 50, 150);
-      doc.text(`Fällig: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}`, 50, 170);
+      doc.fontSize(10)
+         .fillColor('#7f8c8d')
+         .text(invoice.user_address || '', 50, 80)
+         .text(`${invoice.user_postal || ''} ${invoice.user_city || ''}`, 50, 95)
+         .text(invoice.user_country || 'Deutschland', 50, 110)
+         .text(`Tel: ${invoice.user_phone || ''}`, 50, 125)
+         .text(`E-Mail: ${invoice.user_email || ''}`, 50, 140);
       
-      doc.text('Kunde:', 300, 130);
-      doc.text(invoice.company_name || `${invoice.first_name} ${invoice.last_name}`, 300, 150);
-      doc.text(invoice.address || '', 300, 170);
-      doc.text(`${invoice.postal_code || ''} ${invoice.city || ''}`, 300, 190);
+      // RECHNUNG HEADER
+      doc.fontSize(24)
+         .fillColor('#e74c3c')
+         .text('RECHNUNG', 400, 50);
       
-      let y = 250;
-      doc.text('Pos.', 50, y);
-      doc.text('Beschreibung', 100, y);
-      doc.text('Menge', 300, y);
-      doc.text('Preis', 370, y);
-      doc.text('Gesamt', 450, y);
+      doc.fontSize(12)
+         .fillColor('#2c3e50')
+         .text(`Rechnungsnummer: ${invoice.invoice_number}`, 400, 85)
+         .text(`Rechnungsdatum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}`, 400, 105)
+         .text(`Fälligkeitsdatum: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}`, 400, 125);
       
-      y += 20;
+      // STATUS
+      const statusColor = invoice.status === 'paid' ? '#27ae60' : invoice.status === 'overdue' ? '#e74c3c' : '#f39c12';
+      doc.fontSize(10)
+         .fillColor(statusColor)
+         .text(`Status: ${getStatusLabel(invoice.status)}`, 400, 145);
+      
+      // KUNDE
+      doc.fontSize(14)
+         .fillColor('#2c3e50')
+         .text('Rechnungsempfänger:', 50, 200);
+      
+      doc.fontSize(12)
+         .text(invoice.company_name || `${invoice.first_name} ${invoice.last_name}`, 50, 220)
+         .text(invoice.address || '', 50, 240)
+         .text(`${invoice.postal_code || ''} ${invoice.city || ''}`, 50, 260)
+         .text(invoice.country || '', 50, 280);
+      
+      if (invoice.tax_id) {
+        doc.text(`USt-IdNr.: ${invoice.tax_id}`, 50, 300);
+      }
+      
+      // TABELLE
+      let y = 350;
+      
+      // Tabellen-Header
+      doc.rect(50, y, 500, 25).fillAndStroke('#3498db', '#2980b9');
+      doc.fontSize(10)
+         .fillColor('#ffffff')
+         .text('Pos.', 60, y + 8)
+         .text('Beschreibung', 100, y + 8)
+         .text('Menge', 300, y + 8)
+         .text('Einzelpreis', 360, y + 8)
+         .text('MwSt.', 420, y + 8)
+         .text('Gesamt', 480, y + 8);
+      
+      y += 25;
+      
+      // Tabellen-Inhalt
+      let totalNet = 0;
+      let totalTax = 0;
+      
       items.forEach((item, index) => {
-        doc.text(index + 1, 50, y);
-        doc.text(item.description, 100, y);
-        doc.text(item.quantity, 300, y);
-        doc.text(`€ ${item.unit_price}`, 370, y);
-        doc.text(`€ ${item.total}`, 450, y);
+        const netAmount = item.quantity * item.unit_price;
+        const taxAmount = netAmount * (item.tax_rate / 100);
+        totalNet += netAmount;
+        totalTax += taxAmount;
+        
+        const bgColor = index % 2 === 0 ? '#ecf0f1' : '#ffffff';
+        doc.rect(50, y, 500, 20).fillAndStroke(bgColor, '#bdc3c7');
+        
+        doc.fontSize(9)
+           .fillColor('#2c3e50')
+           .text((index + 1).toString(), 60, y + 6)
+           .text(item.description, 100, y + 6, { width: 180 })
+           .text(item.quantity.toString(), 300, y + 6)
+           .text(`€ ${item.unit_price.toFixed(2)}`, 360, y + 6)
+           .text(`${item.tax_rate}%`, 420, y + 6)
+           .text(`€ ${(netAmount + taxAmount).toFixed(2)}`, 480, y + 6);
+        
         y += 20;
       });
       
+      // SUMMEN
       y += 20;
-      doc.text(`Zwischensumme: € ${invoice.subtotal}`, 350, y);
-      y += 20;
-      doc.text(`MwSt.: € ${invoice.tax_amount}`, 350, y);
-      y += 20;
-      doc.fontSize(14).text(`Gesamt: € ${invoice.total}`, 350, y);
+      doc.fontSize(11)
+         .fillColor('#2c3e50')
+         .text(`Zwischensumme (netto): € ${totalNet.toFixed(2)}`, 350, y)
+         .text(`MwSt. (${invoice.tax_rate || 19}%): € ${totalTax.toFixed(2)}`, 350, y + 20)
+         .fontSize(14)
+         .fillColor('#e74c3c')
+         .text(`Gesamtbetrag: € ${(totalNet + totalTax).toFixed(2)}`, 350, y + 45);
+      
+      // ZAHLUNGSHINWEISE
+      y += 100;
+      if (y > 700) {
+        doc.addPage();
+        y = 50;
+      }
+      
+      doc.fontSize(12)
+         .fillColor('#2c3e50')
+         .text('Zahlungshinweise:', 50, y);
+      
+      doc.fontSize(10)
+         .text(`Bitte überweisen Sie den Betrag bis zum ${new Date(invoice.due_date).toLocaleDateString('de-DE')}.`, 50, y + 20)
+         .text('Zahlungsziel: 14 Tage netto', 50, y + 35)
+         .text(invoice.notes || 'Vielen Dank für Ihr Vertrauen!', 50, y + 55);
+      
+      // FOOTER
+      doc.fontSize(8)
+         .fillColor('#95a5a6')
+         .text('Diese Rechnung wurde elektronisch erstellt und ist ohne Unterschrift gültig.', 50, 750)
+         .text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} mit Sunshin3 Invoice Pro`, 50, 765);
       
       doc.end();
       
-      return { success: true, path: filePath };
+      return { success: true, path: filePath, filename };
     } catch (error) {
+      console.error('PDF generation error:', error);
       return { success: false, error: error.message };
     }
   });
