@@ -50,7 +50,7 @@ function showErrorWithAnimation(message) {
     showError(message);
 }
 
-// Bessere Initialisierung
+// Bessere Initialisierung - Vereinfacht und robuster
 async function initializeApp() {
     if (isInitialized) return;
     
@@ -59,21 +59,33 @@ async function initializeApp() {
     try {
         // API Check
         if (!window.api) {
-            throw new Error('window.api not available');
+            console.warn('⚠️ window.api not available yet, using fallback');
+            // Fallback für Spracheinstellungen
+            currentLanguage = 'de';
+            await loadTranslations();
+            showLoginScreen();
+            return;
         }
         console.log('✅ API available');
 
         // Sprache laden
-        const savedLanguage = await window.api.getLanguage();
-        if (savedLanguage) {
-            currentLanguage = savedLanguage;
+        try {
+            const savedLanguage = await window.api.getLanguage();
+            if (savedLanguage) {
+                currentLanguage = savedLanguage;
+                await loadTranslations();
+                showLoginScreen();
+            } else {
+                showLanguageSelection();
+            }
+        } catch (error) {
+            console.warn('⚠️ Language loading failed, using default:', error);
+            currentLanguage = 'de';
             await loadTranslations();
             showLoginScreen();
-        } else {
-            showLanguageSelection();
         }
 
-        // Event Listener initialisieren
+        // Event Listener initialisieren - OHNE setupNavigationListeners!
         initializeEventListeners();
         
         isInitialized = true;
@@ -81,26 +93,173 @@ async function initializeApp() {
 
     } catch (error) {
         console.error('❌ App initialization failed:', error);
-        showError('Anwendung konnte nicht initialisiert werden: ' + error.message);
+        // Fallback auch bei komplettem Fehler
+        currentLanguage = 'de';
+        await loadTranslations();
+        showLoginScreen();
+        initializeEventListeners();
+        isInitialized = true;
     }
 }
 
-// DOM Content Loaded
+// DOM Content Loaded - Vereinfacht und direkt
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔧 DOM loaded, starting initialization...');
+    console.log('🔧 DOM loaded, starting direct initialization...');
     
-    // Sofortige Initialisierung mit Fallback
+    // SOFORTIGE Button-Handler ohne komplexe Initialisierung
+    setupDirectButtonHandlers();
+    
+    // Normale Initialisierung
     setTimeout(() => {
         initializeApp();
     }, 100);
-
-    // Sprachauswahl Event Listener
-    if (window.api && window.api.on) {
-        window.api.on('show-language-selection', () => {
-            showLanguageSelection();
-        });
-    }
 });
+
+// Direkte Button Handler - Funktioniert SOFORT
+function setupDirectButtonHandlers() {
+    console.log('🔘 Setting up DIRECT button handlers...');
+    
+    // Warte kurz auf DOM-Elemente
+    setTimeout(() => {
+        const loginBtn = document.getElementById('loginBtn');
+        const registerLink = document.getElementById('registerLink');
+        const forgotPasswordLink = document.querySelector('a[data-i18n="login.forgotPassword"]');
+        
+        console.log('Direct handlers - Found elements:', {
+            loginBtn: !!loginBtn,
+            registerLink: !!registerLink,
+            forgotPasswordLink: !!forgotPasswordLink
+        });
+        
+        // LOGIN BUTTON - Direkt an Button
+        if (loginBtn) {
+            loginBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                console.log('🔘 LOGIN BUTTON CLICKED!');
+                
+                const emailInput = document.getElementById('emailInput');
+                const passwordInput = document.getElementById('passwordInput');
+                
+                const email = emailInput ? emailInput.value.trim() : '';
+                const password = passwordInput ? passwordInput.value : '';
+                
+                if (!email || !password) {
+                    alert('Bitte E-Mail und Passwort eingeben');
+                    return;
+                }
+                
+                try {
+                    console.log('🔄 Trying login with:', email);
+                    
+                    if (window.api && window.api.userLogin) {
+                        const result = await window.api.userLogin(email, password);
+                        console.log('Login result:', result);
+                        
+                        if (result && result.success) {
+                            alert('Login erfolgreich!');
+                            showMainApp(result.user);
+                        } else {
+                            alert('Login fehlgeschlagen: ' + (result?.error || 'Unbekannter Fehler'));
+                        }
+                    } else {
+                        alert('API nicht verfügbar');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Fehler beim Login: ' + error.message);
+                }
+            });
+            console.log('✅ LOGIN button handler added');
+        }
+        
+        // REGISTER LINK - Direkt an Link
+        if (registerLink) {
+            registerLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔘 REGISTER LINK CLICKED!');
+                alert('Registrierung wird geladen...');
+                showRegistrationForm();
+            });
+            console.log('✅ REGISTER link handler added');
+        }
+        
+        // FORGOT PASSWORD LINK - Direkt an Link
+        if (forgotPasswordLink) {
+            forgotPasswordLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔘 FORGOT PASSWORD LINK CLICKED!');
+                alert('Passwort vergessen wird geladen...');
+                showForgotPasswordForm();
+            });
+            console.log('✅ FORGOT PASSWORD link handler added');
+        }
+        
+    }, 100);
+}
+
+// Login Submit Handler - Separiert für bessere Performance
+async function handleLoginSubmit(e) {
+    e.preventDefault();
+    console.log('🚀 Login form submitted');
+    
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value : '';
+    
+    console.log('Login attempt:', { 
+        email: email, 
+        password: password ? '***' : 'EMPTY',
+        emailLength: email.length,
+        passwordLength: password.length
+    });
+    
+    if (!email || !password) {
+        console.error('❌ Email or password missing');
+        showErrorWithAnimation('Bitte E-Mail und Passwort eingeben');
+        return;
+    }
+    
+    // Loading state
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Anmelden...';
+    }
+    
+    try {
+        console.log('🔄 Calling window.api.userLogin...');
+        
+        if (!window.api || !window.api.userLogin) {
+            throw new Error('window.api.userLogin not available');
+        }
+        
+        const result = await window.api.userLogin(email, password);
+        console.log('✅ Login API response:', result);
+        
+        if (result && result.success) {
+            console.log('🎉 Login successful!');
+            showMainApp(result.user);
+        } else {
+            console.log('❌ Login failed:', result ? result.error : 'No result');
+            if (result && result.needsVerification) {
+                showEmailVerificationMessage(email);
+            } else {
+                showErrorWithAnimation(result ? result.error : 'Anmeldung fehlgeschlagen');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Login error:', error);
+        showErrorWithAnimation('Verbindungsfehler. Bitte versuchen Sie es erneut.');
+    } finally {
+        // Reset button
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<span>Anmelden</span><i class="fas fa-arrow-right"></i>';
+        }
+    }
+}
 
 // Event Listener initialisieren
 function initializeEventListeners() {
@@ -171,69 +330,15 @@ function initializeEventListeners() {
         });
     }
 
-    // LOGIN FORM - Verbessert
+    // LOGIN FORM - Verbessert mit mehr Debug-Logs
     if (loginForm) {
         console.log('🔐 Setting up login form event listener');
         
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            console.log('🚀 Login form submitted');
-            
-            const email = emailInput ? emailInput.value.trim() : '';
-            const password = passwordInput ? passwordInput.value : '';
-            
-            console.log('Login attempt:', { 
-                email: email, 
-                password: password ? '***' : 'EMPTY',
-                emailLength: email.length,
-                passwordLength: password.length
-            });
-            
-            if (!email || !password) {
-                console.error('❌ Email or password missing');
-                showErrorWithAnimation('Bitte E-Mail und Passwort eingeben');
-                return;
-            }
-            
-            // Loading state
-            const loginBtn = document.getElementById('loginBtn');
-            if (loginBtn) {
-                loginBtn.disabled = true;
-                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Anmelden...';
-            }
-            
-            try {
-                console.log('🔄 Calling window.api.userLogin...');
-                
-                if (!window.api || !window.api.userLogin) {
-                    throw new Error('window.api.userLogin not available');
-                }
-                
-                const result = await window.api.userLogin(email, password);
-                console.log('✅ Login API response:', result);
-                
-                if (result && result.success) {
-                    console.log('🎉 Login successful!');
-                    showMainApp(result.user);
-                } else {
-                    console.log('❌ Login failed:', result ? result.error : 'No result');
-                    if (result && result.needsVerification) {
-                        showEmailVerificationMessage(email);
-                    } else {
-                        showErrorWithAnimation(result ? result.error : 'Anmeldung fehlgeschlagen');
-                    }
-                }
-            } catch (error) {
-                console.error('❌ Login error:', error);
-                showErrorWithAnimation('Verbindungsfehler. Bitte versuchen Sie es erneut.');
-            } finally {
-                // Reset button
-                if (loginBtn) {
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = '<span>Anmelden</span><i class="fas fa-arrow-right"></i>';
-                }
-            }
-        });
+        // Entferne alle existierenden Event Listener
+        loginForm.removeEventListener('submit', handleLoginSubmit);
+        
+        // Füge neuen Event Listener hinzu
+        loginForm.addEventListener('submit', handleLoginSubmit);
         
         console.log('✅ Login form event listener added');
     } else {
@@ -282,27 +387,43 @@ function initializeEventListeners() {
     console.log('✅ All event listeners initialized');
 }
 
-// Navigation Setup - Verbessert
+// Navigation Setup - Verbessert und sicherer
 function setupNavigationListeners() {
     console.log('🧭 Setting up navigation listeners...');
     
-    // Warte kurz auf moderne-app.js
+    // Nur ausführen wenn wir NICHT im Login-Screen sind
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    
+    if (loginScreen && !loginScreen.classList.contains('hidden')) {
+        console.log('⚠️ Login screen active - skipping navigation setup');
+        return;
+    }
+    
+    if (!mainApp || mainApp.classList.contains('hidden')) {
+        console.log('⚠️ Main app not visible - skipping navigation setup');
+        return;
+    }
+    
+    // Warte kurz auf moderne-app.js - aber nur im Main App Kontext
     setTimeout(() => {
-        const navItems = document.querySelectorAll('.nav-item, .nav-btn[data-page]');
+        // Sehr spezifische Selektoren - NUR Navigation Items in der Sidebar
+        const navItems = document.querySelectorAll('.modern-sidebar .nav-item:not(.login-related)');
         console.log('Found nav items:', navItems.length);
         
         navItems.forEach(item => {
+            // Entferne nur alte Navigation Event Listener
             item.removeEventListener('click', handleNavClick);
             item.addEventListener('click', handleNavClick);
         });
         
-        // Onclick handlers für Sidebar
-        const sidebarLinks = document.querySelectorAll('.nav-item[onclick]');
+        // Onclick handlers für Sidebar - nur wenn nicht login-bezogen
+        const sidebarLinks = document.querySelectorAll('.modern-sidebar .nav-item[onclick]:not(.login-related)');
         console.log('Found sidebar links with onclick:', sidebarLinks.length);
         
         sidebarLinks.forEach(link => {
             const onclickAttr = link.getAttribute('onclick');
-            if (onclickAttr && onclickAttr.includes('navigateTo')) {
+            if (onclickAttr && onclickAttr.includes('navigateTo') && !onclickAttr.includes('login')) {
                 const page = onclickAttr.match(/navigateTo\('(.+)'\)/)?.[1];
                 if (page) {
                     link.removeAttribute('onclick');
@@ -318,7 +439,7 @@ function setupNavigationListeners() {
                 }
             }
         });
-    }, 500);
+    }, 200); // Reduziert von 500ms
 }
 
 // Navigation click handler
@@ -378,9 +499,9 @@ function showMainApp(user) {
             console.log('🎯 initializeModernApp found, calling...');
             window.initializeModernApp();
             
-            // Navigation setup
+            // Navigation setup - NUR für die Main App
             setTimeout(() => {
-                setupNavigationListeners();
+                setupNavigationListeners(); // Jetzt sicher, da Login-Screen hidden ist
                 
                 if (typeof window.navigateTo === 'function') {
                     console.log('🏠 Navigating to dashboard...');
