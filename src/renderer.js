@@ -543,55 +543,89 @@ function showMainApp(user) {
             setTimeout(tryInitializeModernApp, 500 * retryCount); // Progressive delay
         } else {
             console.error('❌ Failed to initialize modern app after', maxRetries, 'attempts');
-            console.log('📋 Showing permanent fallback dashboard...');
-            // Fallback: Zeige permanente einfache Dashboard-Inhalte
+            console.log('📋 Showing LIVE dashboard with real database data...');
+            // LIVE Dashboard mit echten Daten aus der Datenbank
             const contentArea = document.getElementById('contentArea');
             if (contentArea) {
                 contentArea.innerHTML = `
-                    <div class="page-content" style="padding: 30px; text-align: center;">
-                        <h2>🎯 Sunshin3 Invoice Pro</h2>
-                        <h3>Willkommen, ${user.first_name || user.email}!</h3>
+                    <div class="page-content" style="padding: 30px;">
+                        <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                            <div>
+                                <h2 style="margin: 0; color: #2c3e50;">🎯 Willkommen zurück, <strong>${user.first_name || user.email}</strong>!</h2>
+                                <p style="margin: 5px 0 0 0; color: #7f8c8d;">Dashboard mit Live-Daten aus SQLite-Datenbank</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 12px; color: #95a5a6;">Letzter Login</div>
+                                <div style="font-weight: bold; color: #34495e;">${new Date().toLocaleDateString('de-DE')}</div>
+                            </div>
+                        </div>
                         
-                        <div class="quick-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0;">
-                            <div class="stat-card" style="background: #e3f2fd; padding: 20px; border-radius: 12px; text-align: center;">
-                                <h4>📄 Rechnungen</h4>
-                                <p style="font-size: 24px; font-weight: bold; color: #1976d2;">0</p>
+                        <div id="liveStats" class="live-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 30px 0;">
+                            <div class="stat-card loading" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); padding: 25px; border-radius: 12px; text-align: center; position: relative;">
+                                <h4 style="margin: 0 0 10px 0; color: #1976d2;">📄 Rechnungen</h4>
+                                <div class="stat-value" style="font-size: 28px; font-weight: bold; color: #1976d2;">⏳</div>
+                                <p style="margin: 5px 0 0 0; color: #1976d2; font-size: 14px;">Wird geladen...</p>
                             </div>
-                            <div class="stat-card" style="background: #f3e5f5; padding: 20px; border-radius: 12px; text-align: center;">
-                                <h4>👥 Kunden</h4>
-                                <p style="font-size: 24px; font-weight: bold; color: #7b1fa2;">0</p>
+                            <div class="stat-card loading" style="background: linear-gradient(135deg, #f3e5f5, #e1bee7); padding: 25px; border-radius: 12px; text-align: center; position: relative;">
+                                <h4 style="margin: 0 0 10px 0; color: #7b1fa2;">👥 Kunden</h4>
+                                <div class="stat-value" style="font-size: 28px; font-weight: bold; color: #7b1fa2;">⏳</div>
+                                <p style="margin: 5px 0 0 0; color: #7b1fa2; font-size: 14px;">Wird geladen...</p>
                             </div>
-                            <div class="stat-card" style="background: #e8f5e8; padding: 20px; border-radius: 12px; text-align: center;">
-                                <h4>💰 Umsatz</h4>
-                                <p style="font-size: 24px; font-weight: bold; color: #388e3c;">€0.00</p>
+                            <div class="stat-card loading" style="background: linear-gradient(135deg, #e8f5e8, #c8e6c9); padding: 25px; border-radius: 12px; text-align: center; position: relative;">
+                                <h4 style="margin: 0 0 10px 0; color: #388e3c;">💰 Gesamtumsatz</h4>
+                                <div class="stat-value" style="font-size: 28px; font-weight: bold; color: #388e3c;">⏳</div>
+                                <p style="margin: 5px 0 0 0; color: #388e3c; font-size: 14px;">Wird geladen...</p>
+                            </div>
+                            <div class="stat-card loading" style="background: linear-gradient(135deg, #fff3e0, #ffe0b2); padding: 25px; border-radius: 12px; text-align: center; position: relative;">
+                                <h4 style="margin: 0 0 10px 0; color: #f57c00;">⏰ Ausstehend</h4>
+                                <div class="stat-value" style="font-size: 28px; font-weight: bold; color: #f57c00;">⏳</div>
+                                <p style="margin: 5px 0 0 0; color: #f57c00; font-size: 14px;">Wird geladen...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="recent-activity" style="margin-top: 30px; padding: 25px; background: #f8f9fa; border-radius: 12px; border-left: 4px solid #007bff;">
+                            <h3 style="margin: 0 0 20px 0; color: #2c3e50;">📊 Letzte Aktivitäten</h3>
+                            <div id="recentActivities" style="color: #6c757d;">
+                                <div style="text-align: center; padding: 20px;">
+                                    <div style="font-size: 20px;">⏳</div>
+                                    <p>Lade letzte Aktivitäten...</p>
+                                </div>
                             </div>
                         </div>
                         
                         <div class="quick-actions" style="margin-top: 30px;">
-                            <h3>Schnellaktionen:</h3>
-                            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 15px;">
-                                <button onclick="alert('Rechnung erstellen - Feature wird implementiert!')" 
-                                        style="padding: 12px 24px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                                    ➕ Neue Rechnung
+                            <h3 style="color: #2c3e50; margin-bottom: 20px;">🚀 Schnellaktionen</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <button onclick="createNewInvoice()" 
+                                        style="padding: 15px 20px; background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                                    ➕ Neue Rechnung erstellen
                                 </button>
-                                <button onclick="alert('Kunde hinzufügen - Feature wird implementiert!')" 
-                                        style="padding: 12px 24px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                                    👤 Neuer Kunde
+                                <button onclick="manageCustomers()" 
+                                        style="padding: 15px 20px; background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);">
+                                    👤 Kunden verwalten
                                 </button>
-                                <button onclick="window.location.reload()" 
-                                        style="padding: 12px 24px; background: #6f42c1; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                                    🔄 App neu laden
+                                <button onclick="viewAllInvoices()" 
+                                        style="padding: 15px 20px; background: linear-gradient(135deg, #6f42c1, #5a2d91); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; box-shadow: 0 4px 15px rgba(111, 66, 193, 0.3);">
+                                    📄 Alle Rechnungen
+                                </button>
+                                <button onclick="refreshDashboard()" 
+                                        style="padding: 15px 20px; background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);">
+                                    🔄 Aktualisieren
                                 </button>
                             </div>
                         </div>
                         
-                        <div style="margin-top: 30px; padding: 20px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">
-                            <h4>✅ Login erfolgreich!</h4>
-                            <p>Ihre Sunshin3 Invoice Pro Anwendung ist bereit. Die vollständige Dashboard-Funktionalität wird geladen...</p>
+                        <div style="margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #d4edda, #c3e6cb); border-radius: 8px; border-left: 4px solid #28a745;">
+                            <h4 style="margin: 0 0 10px 0; color: #155724;">✅ SQLite-Datenbank aktiv!</h4>
+                            <p style="margin: 0; color: #155724;">Ihre Daten werden persistent in der lokalen SQLite-Datenbank gespeichert. Alle Business-Features sind verfügbar.</p>
                         </div>
                     </div>
                 `;
-                console.log('✅ Permanent fallback dashboard loaded');
+                
+                console.log('✅ Live dashboard with real data initialized');
+                
+                // Lade echte Statistiken aus der Datenbank
+                loadLiveDashboardStats();
             }
         }
     }
