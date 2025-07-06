@@ -4,10 +4,10 @@ let translations = {};
 let currentUser = null;
 let isAdminMode = false;
 let adminEmail = '';
+let isInitialized = false;
 
 // Mobile Menu Handler
 function initializeMobileMenu() {
-    // Erstelle Mobile Menu Button
     const header = document.querySelector('.modern-header');
     if (header && !document.querySelector('.mobile-menu-btn')) {
         const menuBtn = document.createElement('button');
@@ -16,7 +16,6 @@ function initializeMobileMenu() {
         menuBtn.onclick = toggleMobileMenu;
         header.insertBefore(menuBtn, header.firstChild);
         
-        // Erstelle Overlay
         const overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
         overlay.onclick = closeMobileMenu;
@@ -40,7 +39,7 @@ function closeMobileMenu() {
     overlay.classList.remove('active');
 }
 
-// Füge Error-Animation für Login hinzu
+// Fehlerbehandlung mit Animation
 function showErrorWithAnimation(message) {
     console.log('🚨 Showing error:', message);
     const loginBox = document.querySelector('.login-box');
@@ -51,58 +50,62 @@ function showErrorWithAnimation(message) {
     showError(message);
 }
 
-// Beim Laden der Seite
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 DOM loaded, initializing app...');
+// Bessere Initialisierung
+async function initializeApp() {
+    if (isInitialized) return;
     
-    // Wait a bit for all scripts to load
-    setTimeout(async () => {
-        console.log('🔧 Starting initialization...');
-        
-        // Check API availability
-        if (window.api) {
-            console.log('✅ window.api available');
-        } else {
-            console.error('❌ window.api not available!');
+    console.log('🚀 Initializing app...');
+    
+    try {
+        // API Check
+        if (!window.api) {
+            throw new Error('window.api not available');
         }
-        
-        // Prüfe ob erste Installation
-        try {
-            const savedLanguage = await window.api.getLanguage();
-            
-            if (savedLanguage) {
-                currentLanguage = savedLanguage;
-                await loadTranslations();
-                showLoginScreen();
-            } else {
-                // Zeige Sprachauswahl bei erster Installation
-                showLanguageSelection();
-            }
-        } catch (error) {
-            console.error('❌ Error getting language:', error);
-            // Fallback to login screen
+        console.log('✅ API available');
+
+        // Sprache laden
+        const savedLanguage = await window.api.getLanguage();
+        if (savedLanguage) {
+            currentLanguage = savedLanguage;
+            await loadTranslations();
             showLoginScreen();
+        } else {
+            showLanguageSelection();
         }
-        
-        // Event Listener für Sprachauswahl
-        if (window.api && window.api.on) {
-            window.api.on('show-language-selection', () => {
-                showLanguageSelection();
-            });
-        }
-        
-        // Initialisiere alle Event Listener
+
+        // Event Listener initialisieren
         initializeEventListeners();
         
-        console.log('✅ Initialization complete');
-    }, 500);
+        isInitialized = true;
+        console.log('✅ App initialization complete');
+
+    } catch (error) {
+        console.error('❌ App initialization failed:', error);
+        showError('Anwendung konnte nicht initialisiert werden: ' + error.message);
+    }
+}
+
+// DOM Content Loaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🔧 DOM loaded, starting initialization...');
+    
+    // Sofortige Initialisierung mit Fallback
+    setTimeout(() => {
+        initializeApp();
+    }, 100);
+
+    // Sprachauswahl Event Listener
+    if (window.api && window.api.on) {
+        window.api.on('show-language-selection', () => {
+            showLanguageSelection();
+        });
+    }
 });
 
 // Event Listener initialisieren
 function initializeEventListeners() {
     console.log('🔧 Initializing event listeners...');
     
-    // Find form elements
     const loginForm = document.getElementById('loginForm');
     const emailInput = document.getElementById('emailInput');
     const passwordInput = document.getElementById('passwordInput');
@@ -113,17 +116,11 @@ function initializeEventListeners() {
         loginForm: !!loginForm,
         emailInput: !!emailInput,
         passwordInput: !!passwordInput,
-        adminCodeSection: !!adminCodeSection
+        adminCodeSection: !!adminCodeSection,
+        codeInputs: codeInputs.length
     });
 
-    // E-Mail Input Handler - NO ADMIN MODE DETECTION
-    if (emailInput) {
-        emailInput.addEventListener('input', async (e) => {
-            console.log('📧 Email input:', e.target.value);
-        });
-    }
-
-    // Code-Input Auto-Advance
+    // Code-Input Auto-Advance (6-stellig)
     codeInputs.forEach((input, index) => {
         input.addEventListener('input', (e) => {
             if (e.target.value && index < 5) {
@@ -149,16 +146,19 @@ function initializeEventListeners() {
                 return;
             }
 
-            const result = await window.api.adminLogin(adminEmail, code);
-            
-            if (result.success) {
-                // Öffne Admin-Panel
-                window.api.openAdminWindow();
-                resetLoginForm();
-            } else {
-                showErrorWithAnimation(result.error || 'Falscher Code');
-                codeInputs.forEach(input => input.value = '');
-                codeInputs[0].focus();
+            try {
+                const result = await window.api.adminLogin(adminEmail, code);
+                
+                if (result.success) {
+                    window.api.openAdminWindow();
+                    resetLoginForm();
+                } else {
+                    showErrorWithAnimation(result.error || 'Falscher Code');
+                    codeInputs.forEach(input => input.value = '');
+                    codeInputs[0].focus();
+                }
+            } catch (error) {
+                showErrorWithAnimation('Verbindungsfehler beim Admin-Login');
             }
         });
     }
@@ -171,7 +171,7 @@ function initializeEventListeners() {
         });
     }
 
-    // LOGIN FORM - ENHANCED WITH DEBUGGING
+    // LOGIN FORM - Verbessert
     if (loginForm) {
         console.log('🔐 Setting up login form event listener');
         
@@ -195,7 +195,7 @@ function initializeEventListeners() {
                 return;
             }
             
-            // Show loading state
+            // Loading state
             const loginBtn = document.getElementById('loginBtn');
             if (loginBtn) {
                 loginBtn.disabled = true;
@@ -258,7 +258,7 @@ function initializeEventListeners() {
         }
     });
 
-    // Navigation Buttons - Enhanced
+    // Navigation setup
     setupNavigationListeners();
 
     // Register Link
@@ -273,53 +273,43 @@ function initializeEventListeners() {
     console.log('✅ All event listeners initialized');
 }
 
-// Enhanced Navigation Setup
+// Navigation Setup - Verbessert
 function setupNavigationListeners() {
     console.log('🧭 Setting up navigation listeners...');
     
-    // Wait for DOM to be fully loaded and moderne-app.js to be available
-    const initNavigation = () => {
-        // Try to find navigation items
+    // Warte kurz auf moderne-app.js
+    setTimeout(() => {
         const navItems = document.querySelectorAll('.nav-item, .nav-btn[data-page]');
         console.log('Found nav items:', navItems.length);
         
         navItems.forEach(item => {
-            // Remove existing listeners to avoid duplicates
             item.removeEventListener('click', handleNavClick);
             item.addEventListener('click', handleNavClick);
         });
         
-        // Setup direct onclick handlers for sidebar navigation
-        setTimeout(() => {
-            const sidebarLinks = document.querySelectorAll('.nav-item[onclick]');
-            console.log('Found sidebar links with onclick:', sidebarLinks.length);
-            
-            sidebarLinks.forEach(link => {
-                const onclickAttr = link.getAttribute('onclick');
-                if (onclickAttr && onclickAttr.includes('navigateTo')) {
-                    const page = onclickAttr.match(/navigateTo\('(.+)'\)/)?.[1];
-                    if (page) {
-                        // Remove onclick and add proper event listener
-                        link.removeAttribute('onclick');
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            console.log('🧭 Navigating to:', page);
-                            if (typeof window.navigateTo === 'function') {
-                                window.navigateTo(page);
-                            } else {
-                                console.error('❌ navigateTo function not available');
-                            }
-                        });
-                    }
+        // Onclick handlers für Sidebar
+        const sidebarLinks = document.querySelectorAll('.nav-item[onclick]');
+        console.log('Found sidebar links with onclick:', sidebarLinks.length);
+        
+        sidebarLinks.forEach(link => {
+            const onclickAttr = link.getAttribute('onclick');
+            if (onclickAttr && onclickAttr.includes('navigateTo')) {
+                const page = onclickAttr.match(/navigateTo\('(.+)'\)/)?.[1];
+                if (page) {
+                    link.removeAttribute('onclick');
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('🧭 Navigating to:', page);
+                        if (typeof window.navigateTo === 'function') {
+                            window.navigateTo(page);
+                        } else {
+                            console.error('❌ navigateTo function not available');
+                        }
+                    });
                 }
-            });
-        }, 200);
-    };
-    
-    // Run immediately and retry after short delay
-    initNavigation();
-    setTimeout(initNavigation, 500);
-    setTimeout(initNavigation, 1000);
+            }
+        });
+    }, 500);
 }
 
 // Navigation click handler
@@ -346,12 +336,12 @@ function handleNavClick(e) {
     }
 }
 
-// Show Main App - Enhanced with user transfer
+// Show Main App - Verbessert
 function showMainApp(user) {
     console.log('🎉 Showing main app for user:', user);
     currentUser = user;
     
-    // Transfer user to moderne-app.js
+    // User für moderne-app.js verfügbar machen
     window.currentUserFromRenderer = user;
     
     const loginScreen = document.getElementById('loginScreen');
@@ -371,48 +361,34 @@ function showMainApp(user) {
         console.log('✅ User name updated');
     }
     
-    // Initialize modern app functionality with retries
-    let retryCount = 0;
-    const maxRetries = 5;
-    
-    const initializeApp = () => {
-        console.log(`🔄 Attempting to initialize app (attempt ${retryCount + 1}/${maxRetries})`);
+    // Moderne App initialisieren - Einfacher Ansatz
+    setTimeout(() => {
+        console.log('🎯 Initializing modern app...');
         
         if (typeof window.initializeModernApp === 'function') {
             console.log('🎯 initializeModernApp found, calling...');
             window.initializeModernApp();
             
-            // Setup navigation after app initialization
+            // Navigation setup
             setTimeout(() => {
                 setupNavigationListeners();
                 
-                // Force navigate to dashboard
                 if (typeof window.navigateTo === 'function') {
                     console.log('🏠 Navigating to dashboard...');
                     window.navigateTo('dashboard');
-                } else {
-                    console.log('⏳ navigateTo not available yet');
                 }
-            }, 100);
+            }, 200);
             
         } else {
-            console.log('⏳ initializeModernApp not found');
-            if (retryCount < maxRetries) {
-                retryCount++;
-                setTimeout(initializeApp, 200 * retryCount);
-            } else {
-                console.error('❌ Failed to find initializeModernApp after', maxRetries, 'attempts');
-            }
+            console.log('⏳ initializeModernApp not found yet, retrying...');
+            setTimeout(() => showMainApp(user), 300);
         }
-    };
+    }, 200);
     
-    // Start initialization
-    setTimeout(initializeApp, 100);
-    
-    // Initialize mobile menu
+    // Mobile menu
     setTimeout(() => {
         initializeMobileMenu();
-    }, 150);
+    }, 300);
 }
 
 // Sprachauswahl anzeigen
@@ -428,13 +404,17 @@ function showLanguageSelection() {
 
 // Sprache auswählen
 async function selectLanguage(language) {
-    currentLanguage = language;
-    await window.api.saveLanguage(language);
-    await loadTranslations();
-    
-    // Verstecke Sprachauswahl und zeige Login
-    document.getElementById('languageSelection').classList.add('hidden');
-    showLoginScreen();
+    try {
+        currentLanguage = language;
+        await window.api.saveLanguage(language);
+        await loadTranslations();
+        
+        document.getElementById('languageSelection').classList.add('hidden');
+        showLoginScreen();
+    } catch (error) {
+        console.error('Error selecting language:', error);
+        showError('Fehler beim Speichern der Sprache');
+    }
 }
 
 // Login Screen anzeigen
@@ -500,13 +480,17 @@ function getTranslation(key) {
 
 // Sprache ändern
 async function changeLanguage(language) {
-    currentLanguage = language;
-    await window.api.saveLanguage(language);
-    await loadTranslations();
-    
-    // Dropdown schließen
-    const langDropdown = document.getElementById('langDropdown');
-    if (langDropdown) langDropdown.classList.add('hidden');
+    try {
+        currentLanguage = language;
+        await window.api.saveLanguage(language);
+        await loadTranslations();
+        
+        const langDropdown = document.getElementById('langDropdown');
+        if (langDropdown) langDropdown.classList.add('hidden');
+    } catch (error) {
+        console.error('Error changing language:', error);
+        showError('Fehler beim Ändern der Sprache');
+    }
 }
 
 // Sprachflagge aktualisieren
@@ -547,36 +531,37 @@ function resetLoginForm() {
 // Registrierungsformular anzeigen
 function showRegistrationForm() {
     console.log('📝 Showing registration form');
-    // Implementation for registration form
     showToast('Registrierung coming soon...', 'info');
 }
 
 // E-Mail-Bestätigungs-Nachricht
 function showEmailVerificationMessage(email) {
     console.log('📧 Showing email verification for:', email);
-    // Implementation for email verification
     showToast('E-Mail-Bestätigung erforderlich', 'info');
 }
 
 // Verification Email erneut senden
 async function resendVerificationEmail(email) {
-    const result = await window.api.resendVerificationEmail(email);
-    if (result.success) {
-        showSuccess('Bestätigungs-E-Mail wurde erneut gesendet');
-    } else {
-        showError('Fehler beim Senden der E-Mail');
+    try {
+        const result = await window.api.resendVerificationEmail(email);
+        if (result.success) {
+            showSuccess('Bestätigungs-E-Mail wurde erneut gesendet');
+        } else {
+            showError('Fehler beim Senden der E-Mail');
+        }
+    } catch (error) {
+        showError('Verbindungsfehler beim Senden der E-Mail');
     }
 }
 
 // Zurück zum Login
 function showLoginForm() {
-    location.reload(); // Einfachste Lösung: Seite neu laden
+    location.reload();
 }
 
 // Error Display
 function showError(message) {
     console.log('🚨 Error:', message);
-    // Use moderne-app.js showToast if available, otherwise fallback
     if (typeof window.showToast === 'function') {
         window.showToast(message, 'error');
     } else {
@@ -587,7 +572,6 @@ function showError(message) {
 // Success Display
 function showSuccess(message) {
     console.log('✅ Success:', message);
-    // Use moderne-app.js showToast if available, otherwise fallback
     if (typeof window.showToast === 'function') {
         window.showToast(message, 'success');
     } else {
@@ -595,7 +579,7 @@ function showSuccess(message) {
     }
 }
 
-// Toast Notification (Fallback if moderne-app.js not loaded)
+// Toast Notification (Fallback)
 function showToast(message, type = 'info') {
     console.log(`🔔 Toast (${type}): ${message}`);
     
@@ -606,7 +590,6 @@ function showToast(message, type = 'info') {
         <span>${message}</span>
     `;
     
-    // Basic toast styling
     toast.style.cssText = `
         position: fixed;
         top: 20px;
@@ -631,7 +614,7 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// Globale Funktionen für HTML onclick
+// Globale Funktionen
 window.selectLanguage = selectLanguage;
 window.changeLanguage = changeLanguage;
 window.showLoginForm = showLoginForm;
