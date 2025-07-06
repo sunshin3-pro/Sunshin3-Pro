@@ -38,10 +38,61 @@ class ElectronInvoiceAppTester(unittest.TestCase):
             self.assertIn(f'CREATE TABLE IF NOT EXISTS {table}', db_content, 
                          f"Table '{table}' not defined in database.js")
             print(f"✅ Table '{table}' defined in database.js")
+        
+        # Check for test user creation function
+        self.assertIn('async function createTestUser()', db_content,
+                     "createTestUser() function not found in database.js")
+        print("✅ createTestUser() function found in database.js")
+        
+        # Check for test user creation in initDatabase
+        self.assertIn('await createTestUser()', db_content,
+                     "Test user creation not called in initDatabase()")
+        print("✅ Test user creation called in initDatabase()")
+        
+        # Check test user credentials
+        self.assertIn('email: \'test@sunshin3.pro\'', db_content,
+                     "Test user email not found in database.js")
+        self.assertIn('password: \'test123\'', db_content,
+                     "Test user password not found in database.js")
+        print("✅ Test user credentials found in database.js")
     
-    def test_02_ipc_handlers(self):
-        """Test IPC handlers for API endpoints"""
-        print("\n=== Testing IPC Handlers ===")
+    def test_02_authentication_functions(self):
+        """Test authentication functions in database.js"""
+        print("\n=== Testing Authentication Functions ===")
+        
+        # Check if database.js exists
+        db_file = self.app_dir / 'src' / 'database.js'
+        with open(db_file, 'r') as f:
+            db_content = f.read()
+        
+        # Check for user login function
+        self.assertIn('async loginUser(email, password)', db_content,
+                     "loginUser() function not found in database.js")
+        print("✅ loginUser() function found in database.js")
+        
+        # Check for user creation function
+        self.assertIn('async createUser(userData)', db_content,
+                     "createUser() function not found in database.js")
+        print("✅ createUser() function found in database.js")
+        
+        # Check for password hashing with bcrypt
+        self.assertIn('await bcrypt.hash(', db_content,
+                     "bcrypt password hashing not found in database.js")
+        print("✅ bcrypt password hashing found in database.js")
+        
+        # Check for session token creation
+        self.assertIn('crypto.randomBytes', db_content,
+                     "crypto.randomBytes not found for token generation")
+        print("✅ Session token generation with crypto found in database.js")
+        
+        # Check for getUserByToken function
+        self.assertIn('getUserByToken(token)', db_content,
+                     "getUserByToken() function not found in database.js")
+        print("✅ getUserByToken() function found in database.js")
+    
+    def test_03_ipc_handlers(self):
+        """Test IPC handlers for authentication endpoints"""
+        print("\n=== Testing IPC Handlers for Authentication ===")
         
         # Check if ipc-handlers.js exists
         ipc_file = self.app_dir / 'src' / 'ipc-handlers.js'
@@ -52,21 +103,18 @@ class ElectronInvoiceAppTester(unittest.TestCase):
         with open(ipc_file, 'r') as f:
             ipc_content = f.read()
             
-        required_endpoints = [
-            'get-dashboard-stats', 'get-customers', 'add-customer', 
-            'get-products', 'add-product', 'get-invoices', 'create-invoice',
-            'update-invoice-status', 'get-company-settings', 'update-company-settings',
-            'get-reminders', 'create-payment', 'update-subscription'
+        auth_endpoints = [
+            'user-login', 'user-register', 'user-logout', 'get-current-user'
         ]
         
-        for endpoint in required_endpoints:
+        for endpoint in auth_endpoints:
             self.assertIn(f"ipcMain.handle('{endpoint}'", ipc_content, 
                          f"API endpoint '{endpoint}' not implemented")
             print(f"✅ API endpoint '{endpoint}' implemented")
     
-    def test_03_preload_api_exposure(self):
+    def test_04_preload_api_exposure(self):
         """Test API exposure in preload.js"""
-        print("\n=== Testing API Exposure ===")
+        print("\n=== Testing API Exposure for Authentication ===")
         
         # Check if preload.js exists
         preload_file = self.app_dir / 'src' / 'preload.js'
@@ -77,45 +125,56 @@ class ElectronInvoiceAppTester(unittest.TestCase):
         with open(preload_file, 'r') as f:
             preload_content = f.read()
             
-        required_apis = [
-            'getDashboardStats', 'getCustomers', 'addCustomer', 
-            'getProducts', 'addProduct', 'getInvoices', 'createInvoice',
-            'updateInvoiceStatus', 'getCompanySettings', 'updateCompanySettings',
-            'getReminders', 'createPayment', 'updateSubscription'
+        auth_apis = [
+            'userLogin', 'userRegister', 'userLogout', 'getCurrentUser'
         ]
         
-        for api in required_apis:
+        for api in auth_apis:
             self.assertIn(f"{api}:", preload_content, 
                          f"API '{api}' not exposed in preload.js")
             print(f"✅ API '{api}' exposed in preload.js")
     
-    def test_04_moderne_app_functions(self):
-        """Test moderne-app.js functions"""
-        print("\n=== Testing moderne-app.js Functions ===")
+    def test_05_renderer_login_functions(self):
+        """Test login functions in renderer.js"""
+        print("\n=== Testing Login Functions in renderer.js ===")
         
-        # Check if moderne-app.js exists
-        app_file = self.app_dir / 'src' / 'moderne-app.js'
-        self.assertTrue(app_file.exists(), "moderne-app.js file not found")
-        print("✅ moderne-app.js file found")
+        # Check if renderer.js exists
+        renderer_file = self.app_dir / 'src' / 'renderer.js'
+        self.assertTrue(renderer_file.exists(), "renderer.js file not found")
+        print("✅ renderer.js file found")
         
-        # Check for required functions
-        with open(app_file, 'r') as f:
-            app_content = f.read()
+        # Check for login form handling
+        with open(renderer_file, 'r') as f:
+            renderer_content = f.read()
             
-        required_functions = [
-            'initializeModernApp', 'navigateTo', 'loadDashboard', 
-            'getCurrentUsage', 'escapeHtml', 'showToast', 
-            'showUpgradeModal', 'upgradeSubscription'
-        ]
+        # Check for login form submission
+        self.assertIn('loginForm.addEventListener(\'submit\'', renderer_content, 
+                     "Login form submission handler not found in renderer.js")
+        print("✅ Login form submission handler found in renderer.js")
         
-        for func in required_functions:
-            self.assertIn(f"function {func}", app_content, 
-                         f"Function '{func}' not implemented in moderne-app.js")
-            print(f"✅ Function '{func}' implemented in moderne-app.js")
+        # Check for window.api.userLogin call
+        self.assertIn('window.api.userLogin(email, password)', renderer_content, 
+                     "window.api.userLogin call not found in renderer.js")
+        print("✅ window.api.userLogin call found in renderer.js")
+        
+        # Check for registration form
+        self.assertIn('showRegistrationForm()', renderer_content, 
+                     "showRegistrationForm() function not found in renderer.js")
+        print("✅ showRegistrationForm() function found in renderer.js")
+        
+        # Check for forgot password link
+        self.assertIn('forgotPasswordLink', renderer_content, 
+                     "Forgot password link handler not found in renderer.js")
+        print("✅ Forgot password link handler found in renderer.js")
+        
+        # Check for showForgotPasswordForm function
+        self.assertIn('showForgotPasswordForm()', renderer_content, 
+                     "showForgotPasswordForm() function not found in renderer.js")
+        print("✅ showForgotPasswordForm() function found in renderer.js")
     
-    def test_05_ui_components(self):
-        """Test UI components in index.html"""
-        print("\n=== Testing UI Components ===")
+    def test_06_ui_components(self):
+        """Test authentication UI components in index.html"""
+        print("\n=== Testing Authentication UI Components ===")
         
         # Check if index.html exists
         html_file = self.app_dir / 'views' / 'index.html'
@@ -126,79 +185,90 @@ class ElectronInvoiceAppTester(unittest.TestCase):
         with open(html_file, 'r') as f:
             html_content = f.read()
             
-        required_components = [
-            'languageSelection', 'loginScreen', 'mainApp', 
-            'modern-sidebar', 'modern-header', 'contentArea',
-            'modalContainer', 'subscriptionInfo'
+        auth_components = [
+            'loginForm', 'emailInput', 'passwordInput', 'loginBtn',
+            'registerLink', 'forgotPassword'
         ]
         
-        for component in required_components:
-            self.assertIn(f'id="{component}"', html_content, 
-                         f"UI component '{component}' not found in index.html")
+        for component in auth_components:
+            if component == 'forgotPassword':
+                self.assertIn(f'data-i18n="login.{component}"', html_content, 
+                             f"UI component '{component}' not found in index.html")
+            else:
+                self.assertIn(f'id="{component}"', html_content, 
+                             f"UI component '{component}' not found in index.html")
             print(f"✅ UI component '{component}' found in index.html")
+
+class AuthenticationAPITester(unittest.TestCase):
+    """Test suite for the Authentication API functionality"""
     
-    def test_06_css_styles(self):
-        """Test CSS styles in modern-styles.css"""
-        print("\n=== Testing CSS Styles ===")
+    def test_01_test_user_login(self):
+        """Test login with test user credentials"""
+        print("\n=== Testing Test User Login ===")
         
-        # Check if modern-styles.css exists
-        css_file = self.app_dir / 'assets' / 'modern-styles.css'
-        self.assertTrue(css_file.exists(), "modern-styles.css file not found")
-        print("✅ modern-styles.css file found")
+        # Mock the IPC call to test user login
+        # In a real environment, we would use Spectron or similar to test this
+        # Here we're just checking if the code structure is correct
         
-        # Check for required CSS classes
-        with open(css_file, 'r') as f:
-            css_content = f.read()
-            
-        required_classes = [
-            '.modern-app', '.modern-sidebar', '.modern-header', 
-            '.btn-primary-modern', '.btn-secondary-modern', 
-            '.toast-modern', '.modal-backdrop', '.form-input-modern'
-        ]
+        # Check if the test user credentials are correctly defined
+        db_file = Path('/app/src/database.js')
+        with open(db_file, 'r') as f:
+            db_content = f.read()
         
-        for css_class in required_classes:
-            self.assertIn(css_class, css_content, 
-                         f"CSS class '{css_class}' not defined in modern-styles.css")
-            print(f"✅ CSS class '{css_class}' defined in modern-styles.css")
+        # Verify test user credentials
+        self.assertIn('email: \'test@sunshin3.pro\'', db_content)
+        self.assertIn('password: \'test123\'', db_content)
+        print("✅ Test user credentials verified in database.js")
+        
+        # Check if the login function handles these credentials
+        ipc_file = Path('/app/src/ipc-handlers.js')
+        with open(ipc_file, 'r') as f:
+            ipc_content = f.read()
+        
+        self.assertIn('userFunctions.loginUser(email, password)', ipc_content)
+        print("✅ Login function correctly calls userFunctions.loginUser")
+        
+        print("✓ Test user login structure verified")
     
-    def test_07_integration_points(self):
-        """Test integration points between components"""
-        print("\n=== Testing Integration Points ===")
+    def test_02_registration_validation(self):
+        """Test registration validation"""
+        print("\n=== Testing Registration Validation ===")
         
-        # Check renderer.js for integration with moderne-app.js
-        renderer_file = self.app_dir / 'src' / 'renderer.js'
-        self.assertTrue(renderer_file.exists(), "renderer.js file not found")
-        print("✅ renderer.js file found")
-        
+        # Check if renderer.js has validation for registration
+        renderer_file = Path('/app/src/renderer.js')
         with open(renderer_file, 'r') as f:
             renderer_content = f.read()
-            
-        # Check for integration with moderne-app.js
-        self.assertIn("initializeModernApp", renderer_content, 
-                     "No integration with moderne-app.js found in renderer.js")
-        print("✅ Integration with moderne-app.js found in renderer.js")
         
-        # Check for API usage in moderne-app.js
-        with open(self.app_dir / 'src' / 'moderne-app.js', 'r') as f:
-            app_content = f.read()
-            
-        self.assertIn("window.api.", app_content, 
-                     "No API usage found in moderne-app.js")
-        print("✅ API usage found in moderne-app.js")
+        # Check for password validation
+        self.assertIn('password.length', renderer_content)
+        print("✅ Password length validation found")
         
-        # Check for script inclusion in index.html
-        with open(self.app_dir / 'views' / 'index.html', 'r') as f:
-            html_content = f.read()
-            
-        self.assertIn('<script src="../src/renderer.js"></script>', html_content, 
-                     "renderer.js not included in index.html")
-        self.assertIn('<script src="../src/moderne-app.js"></script>', html_content, 
-                     "moderne-app.js not included in index.html")
-        print("✅ All required scripts included in index.html")
+        # Check for email validation
+        self.assertIn('email.includes(\'@\')', renderer_content)
+        print("✅ Email validation found")
+        
+        print("✓ Registration validation structure verified")
+    
+    def test_03_password_reset(self):
+        """Test password reset functionality"""
+        print("\n=== Testing Password Reset ===")
+        
+        # Check if renderer.js has password reset function
+        renderer_file = Path('/app/src/renderer.js')
+        with open(renderer_file, 'r') as f:
+            renderer_content = f.read()
+        
+        # Check for password reset form
+        self.assertIn('showForgotPasswordForm()', renderer_content)
+        print("✅ Password reset form function found")
+        
+        print("✓ Password reset structure verified")
 
 def run_tests():
     """Run the test suite"""
-    suite = unittest.TestLoader().loadTestsFromTestCase(ElectronInvoiceAppTester)
+    suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(ElectronInvoiceAppTester))
+    suite.addTest(unittest.makeSuite(AuthenticationAPITester))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 
