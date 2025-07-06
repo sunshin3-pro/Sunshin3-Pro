@@ -95,8 +95,10 @@ function createAdminWindow() {
     modal: true,
     icon: path.join(__dirname, '../assets/icon.png'),
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
+      nodeIntegration: true,
+      contextIsolation: false,
+      enableRemoteModule: true,
+      webSecurity: false,
       preload: path.join(__dirname, '../diagnose_preload.js')
     },
     backgroundColor: '#0F172A',
