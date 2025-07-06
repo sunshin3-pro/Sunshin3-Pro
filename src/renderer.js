@@ -270,6 +270,15 @@ function initializeEventListeners() {
         });
     }
     
+    // Forgot Password Link
+    const forgotPasswordLink = document.querySelector('a[data-i18n="login.forgotPassword"]');
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showForgotPasswordForm();
+        });
+    }
+    
     console.log('✅ All event listeners initialized');
 }
 
