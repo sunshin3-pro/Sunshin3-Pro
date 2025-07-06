@@ -3,6 +3,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
+  // Session Management
+  getCurrentSession: () => ipcRenderer.invoke('get-current-session'),
+  clearSession: () => ipcRenderer.invoke('clear-session'),
+  
   // Window Controls
   minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
   maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
