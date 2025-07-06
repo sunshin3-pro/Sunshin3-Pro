@@ -177,21 +177,31 @@ function setupDirectButtonHandlers() {
             registerLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log('🔘 REGISTER LINK CLICKED!');
-                alert('Registrierung wird geladen...');
                 showRegistrationForm();
             });
             console.log('✅ REGISTER link handler added');
         }
         
-        // FORGOT PASSWORD LINK - Direkt an Link
+        // FORGOT PASSWORD LINK - Mit ID
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
         if (forgotPasswordLink) {
             forgotPasswordLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log('🔘 FORGOT PASSWORD LINK CLICKED!');
-                alert('Passwort vergessen wird geladen...');
                 showForgotPasswordForm();
             });
             console.log('✅ FORGOT PASSWORD link handler added');
+        } else {
+            // Fallback für data-i18n Selektor
+            const forgotPasswordFallback = document.querySelector('a[data-i18n="login.forgotPassword"]');
+            if (forgotPasswordFallback) {
+                forgotPasswordFallback.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('🔘 FORGOT PASSWORD LINK CLICKED! (fallback)');
+                    showForgotPasswordForm();
+                });
+                console.log('✅ FORGOT PASSWORD link handler added (fallback)');
+            }
         }
         
     }, 100);
