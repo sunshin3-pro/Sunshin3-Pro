@@ -87,22 +87,100 @@ async function initializeApp() {
     }
 }
 
-// DOM Content Loaded
+// DOM Content Loaded - Vereinfacht und direkt
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔧 DOM loaded, starting initialization...');
+    console.log('🔧 DOM loaded, starting direct initialization...');
     
-    // Sofortige Initialisierung mit Fallback
+    // SOFORTIGE Button-Handler ohne komplexe Initialisierung
+    setupDirectButtonHandlers();
+    
+    // Normale Initialisierung
     setTimeout(() => {
         initializeApp();
     }, 100);
-
-    // Sprachauswahl Event Listener
-    if (window.api && window.api.on) {
-        window.api.on('show-language-selection', () => {
-            showLanguageSelection();
-        });
-    }
 });
+
+// Direkte Button Handler - Funktioniert SOFORT
+function setupDirectButtonHandlers() {
+    console.log('🔘 Setting up DIRECT button handlers...');
+    
+    // Warte kurz auf DOM-Elemente
+    setTimeout(() => {
+        const loginBtn = document.getElementById('loginBtn');
+        const registerLink = document.getElementById('registerLink');
+        const forgotPasswordLink = document.querySelector('a[data-i18n="login.forgotPassword"]');
+        
+        console.log('Direct handlers - Found elements:', {
+            loginBtn: !!loginBtn,
+            registerLink: !!registerLink,
+            forgotPasswordLink: !!forgotPasswordLink
+        });
+        
+        // LOGIN BUTTON - Direkt an Button
+        if (loginBtn) {
+            loginBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                console.log('🔘 LOGIN BUTTON CLICKED!');
+                
+                const emailInput = document.getElementById('emailInput');
+                const passwordInput = document.getElementById('passwordInput');
+                
+                const email = emailInput ? emailInput.value.trim() : '';
+                const password = passwordInput ? passwordInput.value : '';
+                
+                if (!email || !password) {
+                    alert('Bitte E-Mail und Passwort eingeben');
+                    return;
+                }
+                
+                try {
+                    console.log('🔄 Trying login with:', email);
+                    
+                    if (window.api && window.api.userLogin) {
+                        const result = await window.api.userLogin(email, password);
+                        console.log('Login result:', result);
+                        
+                        if (result && result.success) {
+                            alert('Login erfolgreich!');
+                            showMainApp(result.user);
+                        } else {
+                            alert('Login fehlgeschlagen: ' + (result?.error || 'Unbekannter Fehler'));
+                        }
+                    } else {
+                        alert('API nicht verfügbar');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Fehler beim Login: ' + error.message);
+                }
+            });
+            console.log('✅ LOGIN button handler added');
+        }
+        
+        // REGISTER LINK - Direkt an Link
+        if (registerLink) {
+            registerLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔘 REGISTER LINK CLICKED!');
+                alert('Registrierung wird geladen...');
+                showRegistrationForm();
+            });
+            console.log('✅ REGISTER link handler added');
+        }
+        
+        // FORGOT PASSWORD LINK - Direkt an Link
+        if (forgotPasswordLink) {
+            forgotPasswordLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔘 FORGOT PASSWORD LINK CLICKED!');
+                alert('Passwort vergessen wird geladen...');
+                showForgotPasswordForm();
+            });
+            console.log('✅ FORGOT PASSWORD link handler added');
+        }
+        
+    }, 100);
+}
 
 // Login Submit Handler - Separiert für bessere Performance
 async function handleLoginSubmit(e) {
