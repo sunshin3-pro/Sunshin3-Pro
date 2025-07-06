@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Electron API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #0F172A;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success {
+            background: #22c55e;
+            color: white;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+        }
+        .info {
+            background: #3b82f6;
+            color: white;
+        }
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Electron API Test</h1>
+    
+    <div class="test-section">
+        <h2>1. API Availability Test</h2>
+        <div id="apiTest" class="result info">Testing...</div>
+        <button onclick="testAPI()">Test API</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Login Test</h2>
+        <div id="loginTest" class="result info">Ready to test</div>
+        <button onclick="testLogin()">Test Login</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. DOM Elements Test</h2>
+        <div id="domTest" class="result info">Ready to test</div>
+        <button onclick="testDOM()">Test DOM</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Console Output</h2>
+        <div id="consoleOutput" class="result info">Check developer console (F12)</div>
+    </div>
+
+    <script>
+        function log(message) {
+            console.log(message);
+            const output = document.getElementById('consoleOutput');
+            output.innerHTML += '<div>' + message + '</div>';
+        }
+        
+        function testAPI() {
+            log('🧪 Testing API availability...');
+            
+            const results = {
+                windowApi: typeof window.api !== 'undefined',
+                processAvailable: typeof process !== 'undefined',
+                nodeIntegration: typeof require !== 'undefined',
+                apiMethods: window.api ? Object.keys(window.api).length : 0
+            };
+            
+            log('✅ API Test Results: ' + JSON.stringify(results, null, 2));
+            
+            const testDiv = document.getElementById('apiTest');
+            if (results.windowApi) {
+                testDiv.className = 'result success';
+                testDiv.innerHTML = `✅ window.api is available with ${results.apiMethods} methods`;
+            } else {
+                testDiv.className = 'result error';
+                testDiv.innerHTML = '❌ window.api is NOT available';
+            }
+            
+            if (results.processAvailable) {
+                log('✅ process object is available (nodeIntegration working)');
+            } else {
+                log('❌ process object is NOT available (nodeIntegration issue)');
+            }
+        }
+        
+        async function testLogin() {
+            log('🔐 Testing login functionality...');
+            
+            const testDiv = document.getElementById('loginTest');
+            testDiv.className = 'result info';
+            testDiv.innerHTML = '🔄 Testing login...';
+            
+            if (typeof window.api === 'undefined') {
+                testDiv.className = 'result error';
+                testDiv.innerHTML = '❌ window.api not available';
+                log('❌ Cannot test login: window.api not available');
+                return;
+            }
+            
+            try {
+                log('🔐 Calling window.api.userLogin...');
+                const result = await window.api.userLogin('test@sunshin3.pro', 'test123');
+                log('🔐 Login result: ' + JSON.stringify(result, null, 2));
+                
+                if (result && result.success) {
+                    testDiv.className = 'result success';
+                    testDiv.innerHTML = '✅ Login successful: ' + JSON.stringify(result);
+                } else {
+                    testDiv.className = 'result error';
+                    testDiv.innerHTML = '❌ Login failed: ' + JSON.stringify(result);
+                }
+            } catch (error) {
+                log('❌ Login error: ' + error.message);
+                testDiv.className = 'result error';
+                testDiv.innerHTML = '❌ Login error: ' + error.message;
+            }
+        }
+        
+        function testDOM() {
+            log('🔍 Testing DOM elements...');
+            
+            const elements = {
+                loginScreen: !!document.querySelector('#loginScreen'),
+                mainApp: !!document.querySelector('#mainApp'),
+                email: !!document.querySelector('#email'),
+                password: !!document.querySelector('#password'),
+                loginButton: !!document.querySelector('#loginButton')
+            };
+            
+            log('🔍 DOM Test Results: ' + JSON.stringify(elements, null, 2));
+            
+            const testDiv = document.getElementById('domTest');
+            const foundElements = Object.values(elements).filter(Boolean).length;
+            
+            if (foundElements > 0) {
+                testDiv.className = 'result success';
+                testDiv.innerHTML = `✅ Found ${foundElements}/5 expected elements`;
+            } else {
+                testDiv.className = 'result error';
+                testDiv.innerHTML = '❌ No expected elements found';
+            }
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            log('🚀 Page loaded, running automatic tests...');
+            testAPI();
+            testDOM();
+        });
+    </script>
+</body>
+</html>
