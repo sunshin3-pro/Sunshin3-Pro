@@ -225,14 +225,21 @@ ipcMain.handle('get-language', () => {
 // App Events
 app.whenReady().then(async () => {
   try {
-    // Datenbank initialisieren
-    await initDatabase();
+    console.log('🚀 Starting app without database for testing...');
     
-    // IPC Handler einrichten
-    setupIPC();
+    // TEMPORÄR: Datenbank-Initialisierung übersprungen
+    // await initDatabase();
+    
+    // TEMPORÄR: IPC Handler ohne Datenbank
+    // setupIPC();
+    
+    // Einfache Mock-IPC für Tests
+    setupMockIPC();
     
     // Fenster erstellen
     createWindow();
+    
+    console.log('✅ App started successfully in test mode');
   } catch (error) {
     console.error('Fehler beim App-Start:', error);
     dialog.showErrorBox('Fehler', 'Die Anwendung konnte nicht gestartet werden.');
