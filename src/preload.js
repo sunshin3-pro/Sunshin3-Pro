@@ -1,4 +1,6 @@
+console.log('🔄 PRELOAD.JS STARTING TO LOAD...');
 const { ipcRenderer } = require('electron');
+console.log('🔄 ipcRenderer loaded successfully');
 
 // Da contextIsolation: false ist, können wir direkt auf window zugreifen
 window.api = {
