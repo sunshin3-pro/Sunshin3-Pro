@@ -282,27 +282,43 @@ function initializeEventListeners() {
     console.log('✅ All event listeners initialized');
 }
 
-// Navigation Setup - Verbessert
+// Navigation Setup - Verbessert und sicherer
 function setupNavigationListeners() {
     console.log('🧭 Setting up navigation listeners...');
     
-    // Warte kurz auf moderne-app.js
+    // Nur ausführen wenn wir NICHT im Login-Screen sind
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    
+    if (loginScreen && !loginScreen.classList.contains('hidden')) {
+        console.log('⚠️ Login screen active - skipping navigation setup');
+        return;
+    }
+    
+    if (!mainApp || mainApp.classList.contains('hidden')) {
+        console.log('⚠️ Main app not visible - skipping navigation setup');
+        return;
+    }
+    
+    // Warte kurz auf moderne-app.js - aber nur im Main App Kontext
     setTimeout(() => {
-        const navItems = document.querySelectorAll('.nav-item, .nav-btn[data-page]');
+        // Sehr spezifische Selektoren - NUR Navigation Items in der Sidebar
+        const navItems = document.querySelectorAll('.modern-sidebar .nav-item:not(.login-related)');
         console.log('Found nav items:', navItems.length);
         
         navItems.forEach(item => {
+            // Entferne nur alte Navigation Event Listener
             item.removeEventListener('click', handleNavClick);
             item.addEventListener('click', handleNavClick);
         });
         
-        // Onclick handlers für Sidebar
-        const sidebarLinks = document.querySelectorAll('.nav-item[onclick]');
+        // Onclick handlers für Sidebar - nur wenn nicht login-bezogen
+        const sidebarLinks = document.querySelectorAll('.modern-sidebar .nav-item[onclick]:not(.login-related)');
         console.log('Found sidebar links with onclick:', sidebarLinks.length);
         
         sidebarLinks.forEach(link => {
             const onclickAttr = link.getAttribute('onclick');
-            if (onclickAttr && onclickAttr.includes('navigateTo')) {
+            if (onclickAttr && onclickAttr.includes('navigateTo') && !onclickAttr.includes('login')) {
                 const page = onclickAttr.match(/navigateTo\('(.+)'\)/)?.[1];
                 if (page) {
                     link.removeAttribute('onclick');
@@ -318,7 +334,7 @@ function setupNavigationListeners() {
                 }
             }
         });
-    }, 500);
+    }, 200); // Reduziert von 500ms
 }
 
 // Navigation click handler
