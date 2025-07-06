@@ -48,7 +48,7 @@ function createWindow() {
   });
 
   // Lade die Startseite - TEMPORARILY LOADING TEST FILE
-  mainWindow.loadFile(path.join(__dirname, '../views/index.html'));
+  mainWindow.loadFile(path.join(__dirname, '../test_login_flow.html'));
 
   // DevTools im Dev-Modus
   if (isDev) {
