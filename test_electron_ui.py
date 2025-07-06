@@ -51,6 +51,20 @@ def test_electron_app():
                     main_app = page.locator('#mainApp:not(.hidden)')
                     login_screen = page.locator('#loginScreen.hidden')
                     
+                    print(f"Main app visible: {main_app.count() > 0}")
+                    print(f"Login screen hidden: {login_screen.count() > 0}")
+                    
+                    # Check for any error messages
+                    error_elements = page.locator('.error, [class*="error"], [id*="error"]')
+                    if error_elements.count() > 0:
+                        for i in range(error_elements.count()):
+                            print(f"Error message found: {error_elements.nth(i).inner_text()}")
+                    
+                    # Check console logs
+                    console_logs = []
+                    page.on("console", lambda msg: console_logs.append(msg.text))
+                    print(f"Console logs: {console_logs}")
+                    
                     if main_app.count() > 0 and login_screen.count() > 0:
                         print("Successfully logged in to the app")
                         
