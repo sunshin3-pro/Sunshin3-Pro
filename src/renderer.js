@@ -263,12 +263,240 @@ function refreshDashboard() {
     loadLiveDashboardStats();
 }
 
-// Globale Funktionen
-window.loadLiveDashboardStats = loadLiveDashboardStats;
-window.createNewInvoice = createNewInvoice;
-window.manageCustomers = manageCustomers;
-window.viewAllInvoices = viewAllInvoices;
-window.refreshDashboard = refreshDashboard;
+// Kunden-Management Page
+function loadCustomersPage() {
+    console.log('👥 Loading customers management page...');
+    
+    const contentArea = document.getElementById('contentArea');
+    if (contentArea) {
+        contentArea.innerHTML = `
+            <div class="page-content" style="padding: 30px;">
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div>
+                        <h2 style="margin: 0; color: #2c3e50;">👥 Kunden-Verwaltung</h2>
+                        <p style="margin: 5px 0 0 0; color: #7f8c8d;">Verwalten Sie Ihre Kunden und deren Informationen</p>
+                    </div>
+                    <button onclick="showAddCustomerModal()" 
+                            style="padding: 12px 24px; background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                        ➕ Neuer Kunde
+                    </button>
+                </div>
+                
+                <div class="customers-filters" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="customerSearch" placeholder="Kunden suchen..." 
+                               style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; min-width: 200px;">
+                        <select id="customerTypeFilter" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Alle Typen</option>
+                            <option value="company">Unternehmen</option>
+                            <option value="individual">Privatperson</option>
+                        </select>
+                        <button onclick="refreshCustomers()" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            🔄 Aktualisieren
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="customersContainer" class="customers-container">
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 24px;">⏳</div>
+                        <p>Lade Kunden...</p>
+                    </div>
+                </div>
+                
+                <div id="addCustomerModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+                    <div class="modal-content" style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0; color: #2c3e50;">Neuer Kunde</h3>
+                            <button onclick="hideAddCustomerModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6c757d;">×</button>
+                        </div>
+                        
+                        <form id="addCustomerForm">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Typ:</label>
+                                    <select id="customerType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="company">Unternehmen</option>
+                                        <option value="individual">Privatperson</option>
+                                    </select>
+                                </div>
+                                <div id="companyNameField">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Firmenname:</label>
+                                    <input type="text" id="companyName" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Vorname:</label>
+                                    <input type="text" id="firstName" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nachname:</label>
+                                    <input type="text" id="lastName" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">E-Mail:</label>
+                                    <input type="email" id="customerEmail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Telefon:</label>
+                                    <input type="tel" id="customerPhone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Adresse:</label>
+                                <input type="text" id="customerAddress" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Stadt:</label>
+                                    <input type="text" id="customerCity" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">PLZ:</label>
+                                    <input type="text" id="customerPostalCode" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Land:</label>
+                                    <input type="text" id="customerCountry" value="Deutschland" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                            
+                            <div id="taxIdField" style="margin-bottom: 20px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">USt-IdNr. (optional):</label>
+                                <input type="text" id="customerTaxId" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Notizen (optional):</label>
+                                <textarea id="customerNotes" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; height: 80px; resize: vertical;"></textarea>
+                            </div>
+                            
+                            <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                                <button type="button" onclick="hideAddCustomerModal()" style="padding: 12px 24px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                    Abbrechen
+                                </button>
+                                <button type="submit" style="padding: 12px 24px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                                    Kunde speichern
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Lade Kunden-Daten
+        loadCustomersData();
+        
+        // Setup Form Handlers
+        setupCustomerFormHandlers();
+    }
+}
+
+// Kunden-Daten laden
+async function loadCustomersData() {
+    console.log('📊 Loading customers data...');
+    
+    try {
+        const result = await window.api.getCustomers();
+        const container = document.getElementById('customersContainer');
+        
+        if (result.success && container) {
+            const customers = result.customers;
+            
+            if (customers.length > 0) {
+                container.innerHTML = customers.map(customer => `
+                    <div class="customer-card" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 15px; transition: box-shadow 0.3s;">
+                        <div style="display: flex; justify-content: between; align-items: start;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                    <h4 style="margin: 0; color: #2c3e50;">
+                                        ${customer.type === 'company' ? '🏢' : '👤'} 
+                                        ${customer.company_name || `${customer.first_name} ${customer.last_name}`}
+                                    </h4>
+                                    <span style="background: ${customer.type === 'company' ? '#007bff' : '#28a745'}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                                        ${customer.type === 'company' ? 'Unternehmen' : 'Privatperson'}
+                                    </span>
+                                </div>
+                                
+                                <div style="color: #6c757d; margin-bottom: 10px;">
+                                    ${customer.email ? `📧 ${customer.email}` : ''}
+                                    ${customer.email && customer.phone ? ' | ' : ''}
+                                    ${customer.phone ? `📞 ${customer.phone}` : ''}
+                                </div>
+                                
+                                ${customer.address ? `
+                                    <div style="color: #6c757d; font-size: 14px;">
+                                        📍 ${customer.address}, ${customer.postal_code || ''} ${customer.city || ''} ${customer.country || ''}
+                                    </div>
+                                ` : ''}
+                                
+                                ${customer.notes ? `
+                                    <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 14px; color: #495057;">
+                                        💬 ${customer.notes}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="editCustomer(${customer.id})" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    ✏️ Bearbeiten
+                                </button>
+                                <button onclick="createInvoiceForCustomer(${customer.id})" style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    📄 Rechnung
+                                </button>
+                                <button onclick="deleteCustomer(${customer.id})" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    🗑️ Löschen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Add hover effects
+                container.querySelectorAll('.customer-card').forEach(card => {
+                    card.addEventListener('mouseenter', () => {
+                        card.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                    });
+                    card.addEventListener('mouseleave', () => {
+                        card.style.boxShadow = 'none';
+                    });
+                });
+                
+            } else {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 8px; border: 2px dashed #e9ecef;">
+                        <div style="font-size: 48px; margin-bottom: 20px; color: #dee2e6;">👥</div>
+                        <h3 style="color: #495057; margin-bottom: 10px;">Noch keine Kunden</h3>
+                        <p style="color: #6c757d; margin-bottom: 20px;">Fügen Sie Ihren ersten Kunden hinzu, um mit der Rechnungsstellung zu beginnen.</p>
+                        <button onclick="showAddCustomerModal()" style="padding: 12px 24px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                            ➕ Ersten Kunden hinzufügen
+                        </button>
+                    </div>
+                `;
+            }
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #f8d7da; color: #721c24; border-radius: 8px;">
+                    <h4>⚠️ Fehler beim Laden der Kunden</h4>
+                    <p>${result.error || 'Unbekannter Fehler'}</p>
+                    <button onclick="loadCustomersData()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Erneut versuchen
+                    </button>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('❌ Customers loading error:', error);
+    }
+}
 
 // DOM Content Loaded - Vereinfacht und direkt
 document.addEventListener('DOMContentLoaded', () => {
