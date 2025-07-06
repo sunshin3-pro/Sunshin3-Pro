@@ -102,6 +102,174 @@ async function initializeApp() {
     }
 }
 
+// Live Dashboard mit echten Daten
+async function loadLiveDashboardStats() {
+    console.log('📊 Loading live dashboard stats from database...');
+    
+    try {
+        // Lade Dashboard-Statistiken von der echten Datenbank
+        const result = await window.api.getDashboardStats();
+        
+        if (result.success) {
+            const stats = result.stats;
+            console.log('✅ Dashboard stats loaded:', stats);
+            
+            // Update die Statistics-Cards mit echten Daten
+            const liveStats = document.getElementById('liveStats');
+            if (liveStats) {
+                liveStats.innerHTML = `
+                    <div class="stat-card" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); padding: 25px; border-radius: 12px; text-align: center; animation: fadeInUp 0.5s ease-out;">
+                        <h4 style="margin: 0 0 10px 0; color: #1976d2;">📄 Rechnungen</h4>
+                        <div class="stat-value" style="font-size: 32px; font-weight: bold; color: #1976d2;">${stats.totalInvoices || 0}</div>
+                        <p style="margin: 5px 0 0 0; color: #1976d2; font-size: 14px;">
+                            Bezahlt: ${stats.paidInvoices || 0} | Entwürfe: ${stats.draftInvoices || 0}
+                        </p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #f3e5f5, #e1bee7); padding: 25px; border-radius: 12px; text-align: center; animation: fadeInUp 0.6s ease-out;">
+                        <h4 style="margin: 0 0 10px 0; color: #7b1fa2;">👥 Kunden</h4>
+                        <div class="stat-value" style="font-size: 32px; font-weight: bold; color: #7b1fa2;">${stats.totalCustomers || 0}</div>
+                        <p style="margin: 5px 0 0 0; color: #7b1fa2; font-size: 14px;">Aktive Kunden</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #e8f5e8, #c8e6c9); padding: 25px; border-radius: 12px; text-align: center; animation: fadeInUp 0.7s ease-out;">
+                        <h4 style="margin: 0 0 10px 0; color: #388e3c;">💰 Gesamtumsatz</h4>
+                        <div class="stat-value" style="font-size: 32px; font-weight: bold; color: #388e3c;">€${(stats.totalRevenue || 0).toFixed(2)}</div>
+                        <p style="margin: 5px 0 0 0; color: #388e3c; font-size: 14px;">Bezahlte Rechnungen</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #fff3e0, #ffe0b2); padding: 25px; border-radius: 12px; text-align: center; animation: fadeInUp 0.8s ease-out;">
+                        <h4 style="margin: 0 0 10px 0; color: #f57c00;">⏰ Ausstehend</h4>
+                        <div class="stat-value" style="font-size: 32px; font-weight: bold; color: #f57c00;">€${(stats.pendingAmount || 0).toFixed(2)}</div>
+                        <p style="margin: 5px 0 0 0; color: #f57c00; font-size: 14px;">
+                            Überfällig: ${stats.overdueInvoices || 0}
+                        </p>
+                    </div>
+                `;
+            }
+            
+            // Lade letzte Aktivitäten
+            loadRecentActivities();
+            
+        } else {
+            console.error('❌ Failed to load dashboard stats:', result.error);
+            // Fallback bei Fehler
+            showDashboardError();
+        }
+    } catch (error) {
+        console.error('❌ Dashboard stats loading error:', error);
+        showDashboardError();
+    }
+}
+
+// Lade letzte Aktivitäten
+async function loadRecentActivities() {
+    try {
+        // Lade die letzten Rechnungen für Aktivitäts-Timeline
+        const invoicesResult = await window.api.getInvoices();
+        
+        const recentActivities = document.getElementById('recentActivities');
+        if (recentActivities && invoicesResult.success) {
+            const recentInvoices = invoicesResult.invoices.slice(0, 5); // Nur die letzten 5
+            
+            if (recentInvoices.length > 0) {
+                recentActivities.innerHTML = recentInvoices.map(invoice => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+                        <div>
+                            <strong style="color: #495057;">Rechnung ${invoice.invoice_number}</strong>
+                            <div style="font-size: 14px; color: #6c757d;">
+                                ${invoice.company_name || invoice.first_name + ' ' + invoice.last_name}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: bold; color: #28a745;">€${parseFloat(invoice.total || 0).toFixed(2)}</div>
+                            <div style="font-size: 12px; color: #6c757d;">
+                                ${getStatusBadge(invoice.status)}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                recentActivities.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #6c757d;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📄</div>
+                        <p>Noch keine Rechnungen erstellt.</p>
+                        <button onclick="createNewInvoice()" style="margin-top: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Erste Rechnung erstellen
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Recent activities loading error:', error);
+    }
+}
+
+// Status Badge Helper
+function getStatusBadge(status) {
+    const badges = {
+        'draft': '<span style="background: #6c757d; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">Entwurf</span>',
+        'sent': '<span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">Versendet</span>',
+        'paid': '<span style="background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">Bezahlt</span>',
+        'overdue': '<span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">Überfällig</span>'
+    };
+    return badges[status] || badges['draft'];
+}
+
+// Dashboard Error Fallback
+function showDashboardError() {
+    const liveStats = document.getElementById('liveStats');
+    if (liveStats) {
+        liveStats.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: #f8d7da; border-radius: 8px; color: #721c24;">
+                <h4>⚠️ Fehler beim Laden der Dashboard-Daten</h4>
+                <p>Die Datenbank-Verbindung konnte nicht hergestellt werden.</p>
+                <button onclick="refreshDashboard()" style="margin-top: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Erneut versuchen
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Dashboard Action Functions
+function createNewInvoice() {
+    console.log('🧾 Creating new invoice...');
+    if (typeof window.navigateTo === 'function') {
+        window.navigateTo('create-invoice');
+    } else {
+        alert('Rechnung erstellen - Feature wird implementiert!\n\nNavigations-System wird geladen...');
+    }
+}
+
+function manageCustomers() {
+    console.log('👥 Managing customers...');
+    if (typeof window.navigateTo === 'function') {
+        window.navigateTo('customers');
+    } else {
+        alert('Kunden verwalten - Feature wird implementiert!\n\nNavigations-System wird geladen...');
+    }
+}
+
+function viewAllInvoices() {
+    console.log('📄 Viewing all invoices...');
+    if (typeof window.navigateTo === 'function') {
+        window.navigateTo('invoices');
+    } else {
+        alert('Alle Rechnungen - Feature wird implementiert!\n\nNavigations-System wird geladen...');
+    }
+}
+
+function refreshDashboard() {
+    console.log('🔄 Refreshing dashboard...');
+    loadLiveDashboardStats();
+}
+
+// Globale Funktionen
+window.loadLiveDashboardStats = loadLiveDashboardStats;
+window.createNewInvoice = createNewInvoice;
+window.manageCustomers = manageCustomers;
+window.viewAllInvoices = viewAllInvoices;
+window.refreshDashboard = refreshDashboard;
+
 // DOM Content Loaded - Vereinfacht und direkt
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🔧 DOM loaded, starting direct initialization...');
