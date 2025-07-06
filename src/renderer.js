@@ -396,9 +396,9 @@ function showMainApp(user) {
             console.log('🎯 initializeModernApp found, calling...');
             window.initializeModernApp();
             
-            // Navigation setup
+            // Navigation setup - NUR für die Main App
             setTimeout(() => {
-                setupNavigationListeners();
+                setupNavigationListeners(); // Jetzt sicher, da Login-Screen hidden ist
                 
                 if (typeof window.navigateTo === 'function') {
                     console.log('🏠 Navigating to dashboard...');
