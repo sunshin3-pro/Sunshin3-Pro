@@ -497,6 +497,40 @@ function setupIPC() {
     }
   });
 
+  // Generate next invoice number - BUSINESS LOGIC
+  ipcMain.handle('generate-invoice-number', async (event) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      const currentYear = new Date().getFullYear();
+      const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+      
+      // Get last invoice number for this year
+      const lastInvoice = db.prepare(`
+        SELECT invoice_number FROM invoices 
+        WHERE user_id = ? AND invoice_number LIKE ? 
+        ORDER BY invoice_number DESC LIMIT 1
+      `).get(userId, `${currentYear}%`);
+      
+      let nextNumber = 1;
+      if (lastInvoice) {
+        // Extract number from format: YYYY-MM-NNNN
+        const numberPart = lastInvoice.invoice_number.split('-')[2];
+        nextNumber = parseInt(numberPart) + 1;
+      }
+      
+      // Format: 2024-03-0001
+      const invoiceNumber = `${currentYear}-${currentMonth}-${String(nextNumber).padStart(4, '0')}`;
+      
+      return { success: true, invoiceNumber };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
   ipcMain.handle('create-invoice', async (event, invoice) => {
     try {
       const userId = getCurrentUserId();
@@ -504,6 +538,41 @@ function setupIPC() {
         return { success: false, error: 'Nicht angemeldet' };
       }
 
+      // Auto-generate invoice number if not provided
+      if (!invoice.invoiceNumber) {
+        const numberResult = await ipcMain.handle('generate-invoice-number', event);
+        if (!numberResult.success) {
+          return numberResult;
+        }
+        invoice.invoiceNumber = numberResult.invoiceNumber;
+      }
+
+      // DEUTSCHE STEUERBERECHNUNG
+      const calculateTaxes = (items) => {
+        let subtotal = 0;
+        let totalTax = 0;
+        
+        items.forEach(item => {
+          const netAmount = item.quantity * item.unitPrice;
+          const taxRate = item.taxRate || 19; // Standard MwSt. Deutschland
+          const taxAmount = netAmount * (taxRate / 100);
+          
+          subtotal += netAmount;
+          totalTax += taxAmount;
+          
+          // Set item total including tax
+          item.total = netAmount + taxAmount;
+        });
+        
+        return {
+          subtotal: Math.round(subtotal * 100) / 100,
+          taxAmount: Math.round(totalTax * 100) / 100,
+          total: Math.round((subtotal + totalTax) * 100) / 100
+        };
+      };
+
+      const taxCalc = calculateTaxes(invoice.items || []);
+      
       const insertInvoice = db.prepare(`
         INSERT INTO invoices (
           user_id, customer_id, invoice_number, invoice_date, due_date,
@@ -519,19 +588,22 @@ function setupIPC() {
       `);
       
       const transaction = db.transaction((invoice) => {
+        // Calculate due date (14 days default)
+        const dueDate = invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
         const invoiceResult = insertInvoice.run(
           userId,
           invoice.customerId,
           invoice.invoiceNumber,
-          invoice.invoiceDate,
-          invoice.dueDate,
+          invoice.invoiceDate || new Date().toISOString().split('T')[0],
+          dueDate,
           invoice.status || 'draft',
-          invoice.subtotal,
-          invoice.taxAmount,
-          invoice.total,
+          taxCalc.subtotal,
+          taxCalc.taxAmount,
+          taxCalc.total,
           invoice.currency || 'EUR',
-          invoice.notes,
-          invoice.paymentTerms,
+          invoice.notes || 'Zahlbar innerhalb von 14 Tagen netto.',
+          invoice.paymentTerms || '14 Tage netto',
           invoice.language || 'de'
         );
         
@@ -541,11 +613,11 @@ function setupIPC() {
           invoice.items.forEach((item, index) => {
             insertItem.run(
               invoiceId,
-              item.productId,
+              item.productId || null,
               item.description,
               item.quantity,
               item.unitPrice,
-              item.taxRate,
+              item.taxRate || 19,
               item.discount || 0,
               item.total,
               index + 1
@@ -557,8 +629,15 @@ function setupIPC() {
       });
       
       const invoiceId = transaction(invoice);
-      return { success: true, id: invoiceId };
+      
+      return { 
+        success: true, 
+        id: invoiceId, 
+        invoiceNumber: invoice.invoiceNumber,
+        totals: taxCalc
+      };
     } catch (error) {
+      console.error('Create invoice error:', error);
       return { success: false, error: error.message };
     }
   });
