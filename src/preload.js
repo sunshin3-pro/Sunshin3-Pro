@@ -1,8 +1,7 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { ipcRenderer } = require('electron');
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('api', {
+// Da contextIsolation: false ist, können wir direkt auf window zugreifen
+window.api = {
   // Session Management
   getCurrentSession: () => ipcRenderer.invoke('get-current-session'),
   clearSession: () => ipcRenderer.invoke('clear-session'),
