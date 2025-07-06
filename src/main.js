@@ -99,7 +99,7 @@ function createAdminWindow() {
       contextIsolation: false,
       enableRemoteModule: true,
       webSecurity: false,
-      preload: path.join(__dirname, '../diagnose_preload.js')
+      preload: path.join(__dirname, 'preload.js')
     },
     backgroundColor: '#0F172A',
     frame: false
