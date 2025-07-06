@@ -205,6 +205,53 @@ function createTables() {
     )
   `);
 
+  // E-Mail Logs Tabelle
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS email_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      invoice_id INTEGER,
+      recipient TEXT NOT NULL,
+      subject TEXT,
+      status TEXT DEFAULT 'sent',
+      message_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+    )
+  `);
+
+  // Zahlungen erweitert
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_id INTEGER NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      payment_date DATE NOT NULL,
+      payment_method TEXT DEFAULT 'bank_transfer',
+      reference TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+    )
+  `);
+
+  // Mahnungen/Reminders
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_id INTEGER NOT NULL,
+      reminder_level INTEGER DEFAULT 1,
+      sent_date DATE NOT NULL,
+      due_date DATE NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      fee DECIMAL(10,2) DEFAULT 0,
+      status TEXT DEFAULT 'sent',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+    )
+  `);
+
   // Indizes für Performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_invoices_user_id ON invoices(user_id);
