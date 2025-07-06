@@ -76,6 +76,8 @@ async function initializeApp() {
         // Event Listener initialisieren
         initializeEventListeners();
         
+        // NICHT setupNavigationListeners() hier aufrufen - das passiert erst nach Login!
+        
         isInitialized = true;
         console.log('✅ App initialization complete');
 
