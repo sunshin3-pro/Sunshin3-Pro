@@ -293,21 +293,18 @@ function setupMockIPC() {
 // App Events
 app.whenReady().then(async () => {
   try {
-    console.log('🚀 Starting app without database for testing...');
+    console.log('🚀 Starting app with REAL database for business features...');
     
-    // TEMPORÄR: Datenbank-Initialisierung übersprungen
-    // await initDatabase();
+    // ECHTE Datenbank initialisieren
+    await initDatabase();
     
-    // TEMPORÄR: IPC Handler ohne Datenbank
-    // setupIPC();
-    
-    // Einfache Mock-IPC für Tests
-    setupMockIPC();
+    // ECHTE IPC Handler
+    setupIPC();
     
     // Fenster erstellen
     createWindow();
     
-    console.log('✅ App started successfully in test mode');
+    console.log('✅ App started successfully with full database functionality');
   } catch (error) {
     console.error('Fehler beim App-Start:', error);
     dialog.showErrorBox('Fehler', 'Die Anwendung konnte nicht gestartet werden.');
