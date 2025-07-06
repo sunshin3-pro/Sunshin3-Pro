@@ -531,7 +531,241 @@ function resetLoginForm() {
 // Registrierungsformular anzeigen
 function showRegistrationForm() {
     console.log('📝 Showing registration form');
-    showToast('Registrierung coming soon...', 'info');
+    
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) {
+        loginScreen.innerHTML = `
+            <div class="login-container">
+                <div class="login-box animate-slide-in">
+                    <div class="login-header">
+                        <img src="../assets/icon.png" alt="Sunshin3 Pro" class="login-logo">
+                        <h2 data-i18n="auth.register.title">Registrierung</h2>
+                        <p data-i18n="auth.register.subtitle">Erstellen Sie Ihr Konto</p>
+                    </div>
+                    
+                    <form id="registerForm" class="login-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="regFirstName">Vorname</label>
+                                <input type="text" id="regFirstName" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="regLastName">Nachname</label>
+                                <input type="text" id="regLastName" class="form-input" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regCompanyName">Firmenname</label>
+                            <input type="text" id="regCompanyName" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regEmail">E-Mail</label>
+                            <input type="email" id="regEmail" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regPassword">Passwort</label>
+                            <input type="password" id="regPassword" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regPasswordConfirm">Passwort bestätigen</label>
+                            <input type="password" id="regPasswordConfirm" class="form-input" required>
+                        </div>
+                        
+                        <button type="submit" class="login-btn" id="registerBtn">
+                            <span>Registrieren</span>
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    </form>
+                    
+                    <div class="login-footer">
+                        <p>Bereits ein Konto? 
+                            <a href="#" id="backToLoginLink" class="auth-link">Anmelden</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Event Listener für Registrierung
+        setupRegistrationListeners();
+    }
+}
+
+// Setup Registration Event Listeners
+function setupRegistrationListeners() {
+    const registerForm = document.getElementById('registerForm');
+    const backToLoginLink = document.getElementById('backToLoginLink');
+    
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const firstName = document.getElementById('regFirstName').value.trim();
+            const lastName = document.getElementById('regLastName').value.trim();
+            const companyName = document.getElementById('regCompanyName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+            
+            // Validierung
+            if (!firstName || !lastName || !companyName || !email || !password) {
+                showError('Bitte füllen Sie alle Felder aus');
+                return;
+            }
+            
+            if (password !== passwordConfirm) {
+                showError('Passwörter stimmen nicht überein');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('Passwort muss mindestens 6 Zeichen lang sein');
+                return;
+            }
+            
+            // Loading state
+            const registerBtn = document.getElementById('registerBtn');
+            if (registerBtn) {
+                registerBtn.disabled = true;
+                registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registriere...';
+            }
+            
+            try {
+                const userData = {
+                    firstName,
+                    lastName,
+                    companyName,
+                    email,
+                    password,
+                    language: currentLanguage
+                };
+                
+                const result = await window.api.userRegister(userData);
+                
+                if (result.success) {
+                    showSuccess('Registrierung erfolgreich! Sie können sich jetzt anmelden.');
+                    setTimeout(() => {
+                        showLoginForm();
+                    }, 2000);
+                } else {
+                    showError(result.error || 'Registrierung fehlgeschlagen');
+                }
+            } catch (error) {
+                console.error('❌ Registration error:', error);
+                showError('Verbindungsfehler bei der Registrierung');
+            } finally {
+                if (registerBtn) {
+                    registerBtn.disabled = false;
+                    registerBtn.innerHTML = '<span>Registrieren</span><i class="fas fa-user-plus"></i>';
+                }
+            }
+        });
+    }
+    
+    if (backToLoginLink) {
+        backToLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLoginForm();
+        });
+    }
+}
+
+// Passwort vergessen anzeigen
+function showForgotPasswordForm() {
+    console.log('🔑 Showing forgot password form');
+    
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) {
+        loginScreen.innerHTML = `
+            <div class="login-container">
+                <div class="login-box animate-slide-in">
+                    <div class="login-header">
+                        <img src="../assets/icon.png" alt="Sunshin3 Pro" class="login-logo">
+                        <h2>Passwort zurücksetzen</h2>
+                        <p>Geben Sie Ihre E-Mail-Adresse ein</p>
+                    </div>
+                    
+                    <form id="forgotPasswordForm" class="login-form">
+                        <div class="form-group">
+                            <label for="forgotEmail">E-Mail</label>
+                            <input type="email" id="forgotEmail" class="form-input" required>
+                        </div>
+                        
+                        <button type="submit" class="login-btn" id="forgotPasswordBtn">
+                            <span>Link senden</span>
+                            <i class="fas fa-envelope"></i>
+                        </button>
+                    </form>
+                    
+                    <div class="login-footer">
+                        <p><a href="#" id="backToLoginFromForgot" class="auth-link">Zurück zur Anmeldung</a></p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        setupForgotPasswordListeners();
+    }
+}
+
+// Setup Forgot Password Event Listeners
+function setupForgotPasswordListeners() {
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    const backLink = document.getElementById('backToLoginFromForgot');
+    
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('forgotEmail').value.trim();
+            
+            if (!email) {
+                showError('Bitte geben Sie Ihre E-Mail-Adresse ein');
+                return;
+            }
+            
+            const forgotBtn = document.getElementById('forgotPasswordBtn');
+            if (forgotBtn) {
+                forgotBtn.disabled = true;
+                forgotBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sende...';
+            }
+            
+            try {
+                // Für Demo: Zeige einfach eine Bestätigung
+                showSuccess('Falls diese E-Mail registriert ist, erhalten Sie einen Reset-Link.');
+                
+                setTimeout(() => {
+                    showLoginForm();
+                }, 3000);
+                
+            } catch (error) {
+                console.error('❌ Forgot password error:', error);
+                showError('Fehler beim Senden des Reset-Links');
+            } finally {
+                if (forgotBtn) {
+                    forgotBtn.disabled = false;
+                    forgotBtn.innerHTML = '<span>Link senden</span><i class="fas fa-envelope"></i>';
+                }
+            }
+        });
+    }
+    
+    if (backLink) {
+        backLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLoginForm();
+        });
+    }
+}
+
+// Login Form neu laden
+function showLoginForm() {
+    console.log('🔓 Reloading login form');
+    location.reload();
 }
 
 // E-Mail-Bestätigungs-Nachricht
