@@ -10,7 +10,12 @@
     "build-installer": "electron-builder --win nsis",
     "postinstall": "electron-builder install-app-deps"
   },
-  "keywords": ["invoice", "billing", "electron", "desktop"],
+  "keywords": [
+    "invoice",
+    "billing",
+    "electron",
+    "desktop"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
@@ -24,7 +29,6 @@
     "electron-store": "^8.1.0",
     "i18next": "^23.7.16",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.3",
     "nodemailer": "^6.9.8",
     "pdfkit": "^0.14.0",
     "uuid": "^9.0.1"
@@ -54,7 +58,13 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Sunshin3 Pro",
-      "installerLanguages": ["de", "en", "fr", "es", "it"],
+      "installerLanguages": [
+        "de",
+        "en",
+        "fr",
+        "es",
+        "it"
+      ],
       "warningsAsErrors": false,
       "packElevateHelper": false
     }
