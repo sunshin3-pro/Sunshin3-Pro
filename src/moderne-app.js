@@ -1925,6 +1925,57 @@ function showAddProductModal() {
     });
 }
 
+// Toast notification function
+function showToast(message, type = 'info') {
+    console.log(`🔔 Toast (${type}): ${message}`);
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-modern ${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        max-width: 400px;
+        min-width: 300px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        animation: slideInRight 0.3s ease-out;
+        backdrop-filter: blur(10px);
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        if (document.body.contains(toast)) {
+            toast.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
+            }, 300);
+        }
+    }, 4000);
+}
+
 // Export functions for global access with logging
 console.log('🔧 Exporting functions to window object...');
 
