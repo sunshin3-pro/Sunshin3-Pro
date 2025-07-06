@@ -6,12 +6,44 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 
+// Session Management
 let currentSession = {
   userId: null,
   token: null,
   user: null,
   isAdmin: false
 };
+
+function getCurrentUserId() {
+  return currentSession.userId || null;
+}
+
+function setCurrentSession(user, token) {
+  currentSession = {
+    userId: user.id,
+    token: token,
+    user: user,
+    isAdmin: false
+  };
+}
+
+function setAdminSession(admin) {
+  currentSession = {
+    userId: null,
+    token: null,
+    user: admin,
+    isAdmin: true
+  };
+}
+
+function clearSession() {
+  currentSession = {
+    userId: null,
+    token: null,
+    user: null,
+    isAdmin: false
+  };
+}
 
 function setupIPC() {
   const db = getDb();
@@ -22,12 +54,7 @@ function setupIPC() {
   });
 
   ipcMain.handle('clear-session', async (event) => {
-    currentSession = {
-      userId: null,
-      token: null,
-      user: null,
-      isAdmin: false
-    };
+    clearSession();
     return { success: true };
   });
 
@@ -37,24 +64,45 @@ function setupIPC() {
   });
 
   ipcMain.handle('admin-login', async (event, email, code) => {
-    return await adminFunctions.verifyAdmin(email, code);
+    try {
+      const result = await adminFunctions.verifyAdmin(email, code);
+      if (result.success) {
+        setAdminSession(result.admin);
+      }
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   });
 
   // User Functions
   ipcMain.handle('user-login', async (event, email, password) => {
-    return await userFunctions.loginUser(email, password);
+    try {
+      const result = await userFunctions.loginUser(email, password);
+      if (result.success) {
+        setCurrentSession(result.user, result.token);
+      }
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   });
 
   ipcMain.handle('user-register', async (event, userData) => {
-    return await userFunctions.createUser(userData);
+    try {
+      return await userFunctions.createUser(userData);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   });
 
   ipcMain.handle('user-logout', async (event) => {
+    clearSession();
     return { success: true };
   });
 
   ipcMain.handle('get-current-user', async (event) => {
-    return null;
+    return currentSession.user;
   });
 
   // Get single user
@@ -91,7 +139,9 @@ function setupIPC() {
         userId
       );
       
-      logAdminActivity(1, 'update_user', `Benutzer ${userData.email} aktualisiert`);
+      if (currentSession.isAdmin) {
+        logAdminActivity(currentSession.user.id, 'update_user', `Benutzer ${userData.email} aktualisiert`);
+      }
       
       return { success: true };
     } catch (error) {
@@ -105,8 +155,8 @@ function setupIPC() {
       const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId);
       db.prepare('DELETE FROM users WHERE id = ?').run(userId);
       
-      if (user) {
-        logAdminActivity(1, 'delete_user', `Benutzer ${user.email} gelöscht`);
+      if (user && currentSession.isAdmin) {
+        logAdminActivity(currentSession.user.id, 'delete_user', `Benutzer ${user.email} gelöscht`);
       }
       
       return { success: true };
@@ -118,18 +168,39 @@ function setupIPC() {
   // Get dashboard stats
   ipcMain.handle('get-dashboard-stats', async (event) => {
     try {
-      const stats = {
-        totalUsers: db.prepare('SELECT COUNT(*) as count FROM users').get().count,
-        totalAdmins: db.prepare('SELECT COUNT(*) as count FROM admins').get().count,
-        totalInvoices: db.prepare('SELECT COUNT(*) as count FROM invoices').get().count,
-        totalCustomers: db.prepare('SELECT COUNT(*) as count FROM customers').get().count,
-        totalProducts: db.prepare('SELECT COUNT(*) as count FROM products').get().count,
-        proUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE subscription_type = "pro"').get().count,
-        basicUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE subscription_type = "basic"').get().count,
-        trialUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE subscription_type = "trial"').get().count,
-        totalRevenue: db.prepare('SELECT SUM(total) as revenue FROM invoices WHERE status = "paid"').get().revenue || 0,
-        pendingAmount: db.prepare('SELECT SUM(total) as amount FROM invoices WHERE status IN ("sent", "overdue")').get().amount || 0
-      };
+      const userId = getCurrentUserId();
+      if (!userId && !currentSession.isAdmin) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      let stats;
+      if (currentSession.isAdmin) {
+        // Admin stats - global
+        stats = {
+          totalUsers: db.prepare('SELECT COUNT(*) as count FROM users').get().count,
+          totalAdmins: db.prepare('SELECT COUNT(*) as count FROM admins').get().count,
+          totalInvoices: db.prepare('SELECT COUNT(*) as count FROM invoices').get().count,
+          totalCustomers: db.prepare('SELECT COUNT(*) as count FROM customers').get().count,
+          totalProducts: db.prepare('SELECT COUNT(*) as count FROM products').get().count,
+          proUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE subscription_type = "pro"').get().count,
+          basicUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE subscription_type = "basic"').get().count,
+          trialUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE subscription_type = "trial"').get().count,
+          totalRevenue: db.prepare('SELECT SUM(total) as revenue FROM invoices WHERE status = "paid"').get().revenue || 0,
+          pendingAmount: db.prepare('SELECT SUM(total) as amount FROM invoices WHERE status IN ("sent", "overdue")').get().amount || 0
+        };
+      } else {
+        // User stats - personal only
+        stats = {
+          totalInvoices: db.prepare('SELECT COUNT(*) as count FROM invoices WHERE user_id = ?').get(userId).count,
+          totalCustomers: db.prepare('SELECT COUNT(*) as count FROM customers WHERE user_id = ?').get(userId).count,
+          totalProducts: db.prepare('SELECT COUNT(*) as count FROM products WHERE user_id = ?').get(userId).count,
+          totalRevenue: db.prepare('SELECT SUM(total) as revenue FROM invoices WHERE user_id = ? AND status = "paid"').get(userId).revenue || 0,
+          pendingAmount: db.prepare('SELECT SUM(total) as amount FROM invoices WHERE user_id = ? AND status IN ("sent", "overdue")').get(userId).amount || 0,
+          paidInvoices: db.prepare('SELECT COUNT(*) as count FROM invoices WHERE user_id = ? AND status = "paid"').get(userId).count,
+          draftInvoices: db.prepare('SELECT COUNT(*) as count FROM invoices WHERE user_id = ? AND status = "draft"').get(userId).count,
+          overdueInvoices: db.prepare('SELECT COUNT(*) as count FROM invoices WHERE user_id = ? AND status = "overdue"').get(userId).count
+        };
+      }
       
       return { success: true, stats };
     } catch (error) {
@@ -140,6 +211,10 @@ function setupIPC() {
   // Get admin activities
   ipcMain.handle('get-admin-activities', async (event, limit = 10) => {
     try {
+      if (!currentSession.isAdmin) {
+        return { success: false, error: 'Keine Admin-Berechtigung' };
+      }
+
       const activities = db.prepare(`
         SELECT a.*, ad.email as admin_email
         FROM admin_activities a
@@ -157,6 +232,10 @@ function setupIPC() {
   // Get all users (for admin panel)
   ipcMain.handle('get-all-users', async (event) => {
     try {
+      if (!currentSession.isAdmin) {
+        return { success: false, error: 'Keine Admin-Berechtigung' };
+      }
+
       const users = db.prepare('SELECT * FROM users ORDER BY created_at DESC').all();
       users.forEach(user => delete user.password);
       return { success: true, users };
@@ -168,7 +247,12 @@ function setupIPC() {
   // Customer Operations
   ipcMain.handle('get-customers', async (event) => {
     try {
-      const customers = db.prepare('SELECT * FROM customers ORDER BY created_at DESC').all();
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      const customers = db.prepare('SELECT * FROM customers WHERE user_id = ? ORDER BY created_at DESC').all(userId);
       return { success: true, customers };
     } catch (error) {
       return { success: false, error: error.message };
@@ -177,6 +261,11 @@ function setupIPC() {
 
   ipcMain.handle('add-customer', async (event, customer) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const stmt = db.prepare(`
         INSERT INTO customers (
           user_id, type, company_name, first_name, last_name, 
@@ -185,7 +274,7 @@ function setupIPC() {
       `);
       
       const result = stmt.run(
-        customer.userId,
+        userId,
         customer.type,
         customer.companyName,
         customer.firstName,
@@ -208,12 +297,17 @@ function setupIPC() {
 
   ipcMain.handle('update-customer', async (event, id, customer) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const stmt = db.prepare(`
         UPDATE customers SET
           type = ?, company_name = ?, first_name = ?, last_name = ?,
           email = ?, phone = ?, address = ?, city = ?, postal_code = ?,
           country = ?, tax_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
       `);
       
       stmt.run(
@@ -229,7 +323,8 @@ function setupIPC() {
         customer.country,
         customer.taxId,
         customer.notes,
-        id
+        id,
+        userId
       );
       
       return { success: true };
@@ -240,7 +335,12 @@ function setupIPC() {
 
   ipcMain.handle('delete-customer', async (event, id) => {
     try {
-      db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      db.prepare('DELETE FROM customers WHERE id = ? AND user_id = ?').run(id, userId);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -250,7 +350,12 @@ function setupIPC() {
   // Product Operations
   ipcMain.handle('get-products', async (event) => {
     try {
-      const products = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      const products = db.prepare('SELECT * FROM products WHERE user_id = ? ORDER BY created_at DESC').all(userId);
       return { success: true, products };
     } catch (error) {
       return { success: false, error: error.message };
@@ -259,6 +364,11 @@ function setupIPC() {
 
   ipcMain.handle('add-product', async (event, product) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const stmt = db.prepare(`
         INSERT INTO products (
           user_id, type, name, description, description_translations,
@@ -267,7 +377,7 @@ function setupIPC() {
       `);
       
       const result = stmt.run(
-        product.userId,
+        userId,
         product.type,
         product.name,
         product.description,
@@ -288,12 +398,17 @@ function setupIPC() {
 
   ipcMain.handle('update-product', async (event, id, product) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const stmt = db.prepare(`
         UPDATE products SET
           type = ?, name = ?, description = ?, description_translations = ?,
           sku = ?, price = ?, tax_rate = ?, unit = ?, category = ?, is_active = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
       `);
       
       stmt.run(
@@ -307,7 +422,8 @@ function setupIPC() {
         product.unit,
         product.category,
         product.isActive ? 1 : 0,
-        id
+        id,
+        userId
       );
       
       return { success: true };
@@ -318,7 +434,12 @@ function setupIPC() {
 
   ipcMain.handle('delete-product', async (event, id) => {
     try {
-      db.prepare('DELETE FROM products WHERE id = ?').run(id);
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      db.prepare('DELETE FROM products WHERE id = ? AND user_id = ?').run(id, userId);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -328,12 +449,18 @@ function setupIPC() {
   // Invoice Operations
   ipcMain.handle('get-invoices', async (event) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const invoices = db.prepare(`
         SELECT i.*, c.company_name, c.first_name, c.last_name
         FROM invoices i
         LEFT JOIN customers c ON i.customer_id = c.id
+        WHERE i.user_id = ?
         ORDER BY i.created_at DESC
-      `).all();
+      `).all(userId);
       return { success: true, invoices };
     } catch (error) {
       return { success: false, error: error.message };
@@ -343,13 +470,18 @@ function setupIPC() {
   // Get Invoice by ID
   ipcMain.handle('get-invoice', async (event, id) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const invoice = db.prepare(`
         SELECT i.*, c.*, u.company_name as user_company
         FROM invoices i
         LEFT JOIN customers c ON i.customer_id = c.id
         LEFT JOIN users u ON i.user_id = u.id
-        WHERE i.id = ?
-      `).get(id);
+        WHERE i.id = ? AND i.user_id = ?
+      `).get(id, userId);
       
       if (!invoice) {
         return { success: false, error: 'Rechnung nicht gefunden' };
@@ -367,6 +499,11 @@ function setupIPC() {
 
   ipcMain.handle('create-invoice', async (event, invoice) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const insertInvoice = db.prepare(`
         INSERT INTO invoices (
           user_id, customer_id, invoice_number, invoice_date, due_date,
@@ -383,7 +520,7 @@ function setupIPC() {
       
       const transaction = db.transaction((invoice) => {
         const invoiceResult = insertInvoice.run(
-          invoice.userId,
+          userId,
           invoice.customerId,
           invoice.invoiceNumber,
           invoice.invoiceDate,
@@ -400,19 +537,21 @@ function setupIPC() {
         
         const invoiceId = invoiceResult.lastInsertRowid;
         
-        invoice.items.forEach((item, index) => {
-          insertItem.run(
-            invoiceId,
-            item.productId,
-            item.description,
-            item.quantity,
-            item.unitPrice,
-            item.taxRate,
-            item.discount || 0,
-            item.total,
-            index + 1
-          );
-        });
+        if (invoice.items && invoice.items.length > 0) {
+          invoice.items.forEach((item, index) => {
+            insertItem.run(
+              invoiceId,
+              item.productId,
+              item.description,
+              item.quantity,
+              item.unitPrice,
+              item.taxRate,
+              item.discount || 0,
+              item.total,
+              index + 1
+            );
+          });
+        }
         
         return invoiceId;
       });
@@ -427,12 +566,17 @@ function setupIPC() {
   // Update Invoice
   ipcMain.handle('update-invoice', async (event, id, invoice) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const updateInvoice = db.prepare(`
         UPDATE invoices SET
           customer_id = ?, invoice_number = ?, invoice_date = ?, due_date = ?,
           status = ?, subtotal = ?, tax_amount = ?, total = ?, currency = ?,
           notes = ?, payment_terms = ?, language = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
       `);
       
       const deleteItems = db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?');
@@ -457,24 +601,27 @@ function setupIPC() {
           invoice.notes,
           invoice.paymentTerms,
           invoice.language || 'de',
-          id
+          id,
+          userId
         );
         
         deleteItems.run(id);
         
-        invoice.items.forEach((item, index) => {
-          insertItem.run(
-            id,
-            item.productId,
-            item.description,
-            item.quantity,
-            item.unitPrice,
-            item.taxRate,
-            item.discount || 0,
-            item.total,
-            index + 1
-          );
-        });
+        if (invoice.items && invoice.items.length > 0) {
+          invoice.items.forEach((item, index) => {
+            insertItem.run(
+              id,
+              item.productId,
+              item.description,
+              item.quantity,
+              item.unitPrice,
+              item.taxRate,
+              item.discount || 0,
+              item.total,
+              index + 1
+            );
+          });
+        }
       });
       
       transaction(invoice);
@@ -487,9 +634,14 @@ function setupIPC() {
   // Delete Invoice
   ipcMain.handle('delete-invoice', async (event, id) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const transaction = db.transaction(() => {
         db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(id);
-        db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
+        db.prepare('DELETE FROM invoices WHERE id = ? AND user_id = ?').run(id, userId);
       });
       
       transaction();
@@ -502,8 +654,13 @@ function setupIPC() {
   // Update Invoice Status
   ipcMain.handle('update-invoice-status', async (event, invoiceId, status) => {
     try {
-      db.prepare('UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-        .run(status, invoiceId);
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      db.prepare('UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?')
+        .run(status, invoiceId, userId);
       
       return { success: true };
     } catch (error) {
@@ -514,13 +671,22 @@ function setupIPC() {
   // PDF Generation
   ipcMain.handle('generate-invoice-pdf', async (event, invoiceId) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const invoice = db.prepare(`
         SELECT i.*, c.*, u.company_name as user_company
         FROM invoices i
         LEFT JOIN customers c ON i.customer_id = c.id
         LEFT JOIN users u ON i.user_id = u.id
-        WHERE i.id = ?
-      `).get(invoiceId);
+        WHERE i.id = ? AND i.user_id = ?
+      `).get(invoiceId, userId);
+
+      if (!invoice) {
+        return { success: false, error: 'Rechnung nicht gefunden' };
+      }
       
       const items = db.prepare(`
         SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY position
@@ -579,7 +745,11 @@ function setupIPC() {
   // Get Settings
   ipcMain.handle('get-settings', async (event) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const settings = db.prepare('SELECT key, value FROM settings WHERE user_id = ?').all(userId);
       const settingsObj = {};
       settings.forEach(setting => {
@@ -594,7 +764,10 @@ function setupIPC() {
   // Update Settings
   ipcMain.handle('update-settings', async (event, settings) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
       
       for (const [key, value] of Object.entries(settings)) {
         const existing = db.prepare('SELECT id FROM settings WHERE user_id = ? AND key = ?')
@@ -618,7 +791,11 @@ function setupIPC() {
   // Get Company Settings
   ipcMain.handle('get-company-settings', async (event) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
       const settings = db.prepare('SELECT key, value FROM settings WHERE user_id = ? AND key LIKE "company_%"').all(userId);
       
@@ -646,7 +823,10 @@ function setupIPC() {
   // Update Company Settings
   ipcMain.handle('update-company-settings', async (event, companyData) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
       
       db.prepare(`
         UPDATE users SET
@@ -690,15 +870,20 @@ function setupIPC() {
   // Get Reminders/Overdue Invoices
   ipcMain.handle('get-reminders', async (event) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const overdueInvoices = db.prepare(`
         SELECT i.*, c.company_name, c.first_name, c.last_name,
                JULIANDAY('now') - JULIANDAY(i.due_date) as days_overdue
         FROM invoices i
         LEFT JOIN customers c ON i.customer_id = c.id
-        WHERE i.status IN ('sent', 'overdue') 
+        WHERE i.user_id = ? AND i.status IN ('sent', 'overdue') 
         AND DATE(i.due_date) < DATE('now')
         ORDER BY days_overdue DESC
-      `).all();
+      `).all(userId);
       
       return { success: true, reminders: overdueInvoices };
     } catch (error) {
@@ -709,6 +894,11 @@ function setupIPC() {
   // Create Payment Record
   ipcMain.handle('create-payment', async (event, paymentData) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       db.exec(`
         CREATE TABLE IF NOT EXISTS payments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -741,11 +931,11 @@ function setupIPC() {
         SELECT SUM(amount) as total FROM payments WHERE invoice_id = ?
       `).get(paymentData.invoiceId).total || 0;
       
-      const invoice = db.prepare('SELECT total FROM invoices WHERE id = ?').get(paymentData.invoiceId);
+      const invoice = db.prepare('SELECT total FROM invoices WHERE id = ? AND user_id = ?').get(paymentData.invoiceId, userId);
       
-      if (totalPayments >= invoice.total) {
-        db.prepare('UPDATE invoices SET status = ? WHERE id = ?')
-          .run('paid', paymentData.invoiceId);
+      if (invoice && totalPayments >= invoice.total) {
+        db.prepare('UPDATE invoices SET status = ? WHERE id = ? AND user_id = ?')
+          .run('paid', paymentData.invoiceId, userId);
       }
       
       return { success: true, id: result.lastInsertRowid };
@@ -757,9 +947,17 @@ function setupIPC() {
   // Get Payments for Invoice
   ipcMain.handle('get-invoice-payments', async (event, invoiceId) => {
     try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const payments = db.prepare(`
-        SELECT * FROM payments WHERE invoice_id = ? ORDER BY payment_date DESC
-      `).all(invoiceId);
+        SELECT p.* FROM payments p
+        JOIN invoices i ON p.invoice_id = i.id
+        WHERE p.invoice_id = ? AND i.user_id = ?
+        ORDER BY p.payment_date DESC
+      `).all(invoiceId, userId);
       
       return { success: true, payments };
     } catch (error) {
@@ -770,16 +968,25 @@ function setupIPC() {
   // Email
   ipcMain.handle('send-invoice-email', async (event, invoiceId, recipient) => {
     try {
-      const settings = db.prepare('SELECT * FROM settings WHERE key LIKE "smtp_%"').all();
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      const settings = db.prepare('SELECT * FROM settings WHERE user_id = ? AND key LIKE "smtp_%"').all(userId);
       const smtpConfig = {};
       settings.forEach(setting => {
         const key = setting.key.replace('smtp_', '');
         smtpConfig[key] = setting.value;
       });
       
+      if (!smtpConfig.host || !smtpConfig.user) {
+        return { success: false, error: 'E-Mail-Einstellungen nicht konfiguriert' };
+      }
+
       const transporter = nodemailer.createTransporter({
         host: smtpConfig.host,
-        port: smtpConfig.port,
+        port: smtpConfig.port || 587,
         secure: smtpConfig.secure === 'true',
         auth: {
           user: smtpConfig.user,
@@ -827,12 +1034,13 @@ function setupIPC() {
     }
   });
 
-  // MongoDB connection removed - using SQLite only
-
   // Update user profile
   ipcMain.handle('update-profile', async (event, profileData) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
       
       const stmt = db.prepare(`
         UPDATE users SET
@@ -862,7 +1070,11 @@ function setupIPC() {
   // Change password
   ipcMain.handle('change-password', async (event, passwordData) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
       const user = db.prepare('SELECT password FROM users WHERE id = ?').get(userId);
       
       const isValid = await bcrypt.compare(passwordData.currentPassword, user.password);
@@ -882,7 +1094,10 @@ function setupIPC() {
   // Update subscription
   ipcMain.handle('update-subscription', async (event, plan) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
       
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
@@ -895,7 +1110,9 @@ function setupIPC() {
         WHERE id = ?
       `).run(plan, expiresAt.toISOString(), userId);
       
-      logAdminActivity(1, 'subscription_upgrade', `Benutzer ${userId} upgraded auf ${plan}`);
+      if (currentSession.isAdmin) {
+        logAdminActivity(currentSession.user.id, 'subscription_upgrade', `Benutzer ${userId} upgraded auf ${plan}`);
+      }
       
       return { success: true };
     } catch (error) {
@@ -940,6 +1157,10 @@ function setupIPC() {
   // Create backup
   ipcMain.handle('create-backup', async (event) => {
     try {
+      if (!currentSession.isAdmin) {
+        return { success: false, error: 'Keine Admin-Berechtigung' };
+      }
+
       const backupPath = path.join(app.getPath('downloads'), `sunshin3_backup_${Date.now()}.db`);
       fs.copyFileSync(db.name, backupPath);
       return { success: true, path: backupPath };
@@ -951,6 +1172,10 @@ function setupIPC() {
   // Restore Backup
   ipcMain.handle('restore-backup', async (event, filePath) => {
     try {
+      if (!currentSession.isAdmin) {
+        return { success: false, error: 'Keine Admin-Berechtigung' };
+      }
+
       fs.copyFileSync(filePath, db.name);
       return { success: true };
     } catch (error) {
@@ -961,7 +1186,10 @@ function setupIPC() {
   // Save settings
   ipcMain.handle('save-settings', async (event, key, value) => {
     try {
-      const userId = 1;
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
       
       const existing = db.prepare('SELECT id FROM settings WHERE user_id = ? AND key = ?')
         .get(userId, key);
