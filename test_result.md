@@ -186,7 +186,8 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Navigation and sidebar are properly implemented in the index.html file. The sidebar includes links to all main sections of the app (Dashboard, Invoices, Customers, Products, etc.). The navigation is responsive and follows the German language interface requirements."
-  created_by: "testing_agent"
+
+metadata:
   version: "1.0"
   test_sequence: 1
   run_ui: false
