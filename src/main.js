@@ -267,6 +267,26 @@ function setupMockIPC() {
   
   ipcMain.handle('user-logout', async () => ({ success: true }));
   
+  // Mock Dashboard Stats (nach Login benötigt)
+  ipcMain.handle('get-dashboard-stats', async () => ({
+    success: true,
+    stats: {
+      totalInvoices: 5,
+      totalCustomers: 3,
+      totalProducts: 8,
+      totalRevenue: 2500.00,
+      pendingAmount: 750.00,
+      paidInvoices: 3,
+      draftInvoices: 2,
+      overdueInvoices: 0
+    }
+  }));
+  
+  // Mock andere benötigte Handler
+  ipcMain.handle('get-customers', async () => ({ success: true, customers: [] }));
+  ipcMain.handle('get-products', async () => ({ success: true, products: [] }));
+  ipcMain.handle('get-invoices', async () => ({ success: true, invoices: [] }));
+  
   console.log('✅ Mock IPC handlers set up');
 }
 
