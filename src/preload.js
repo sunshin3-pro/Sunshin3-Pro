@@ -123,4 +123,8 @@ window.api = {
   }
 };
 
+console.log('✅ window.api vollständig konfiguriert');
+console.log('✅ Verfügbare API-Methoden:', Object.keys(window.api).length);
+console.log('🎯 === PRELOAD.JS ERFOLGREICH ABGESCHLOSSEN ===');
+
 console.log('✅ window.api exposed successfully via preload.js');
