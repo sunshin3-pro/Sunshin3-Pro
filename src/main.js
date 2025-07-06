@@ -35,10 +35,9 @@ function createWindow() {
     minHeight: 700,
     icon: path.join(__dirname, '../assets/icon.png'),
     webPreferences: {
-      nodeIntegration: true,          // ENABLE for JavaScript execution
-      contextIsolation: false,        // DISABLE for window.api access
-      enableRemoteModule: true,       // ENABLE for full functionality
-      webSecurity: false,            // DISABLE for local files
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false,
       preload: path.join(__dirname, '../diagnose_preload.js')
     },
     show: false,
