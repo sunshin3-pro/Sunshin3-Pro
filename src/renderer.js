@@ -466,7 +466,7 @@ function handleNavClick(e) {
     }
 }
 
-// Show Main App - Verbessert
+// Show Main App - Verbessert mit besserem Timing und Retry-Logik
 function showMainApp(user) {
     console.log('🎉 Showing main app for user:', user);
     currentUser = user;
@@ -491,34 +491,67 @@ function showMainApp(user) {
         console.log('✅ User name updated');
     }
     
-    // Moderne App initialisieren - Einfacher Ansatz
-    setTimeout(() => {
-        console.log('🎯 Initializing modern app...');
+    // Retry-Zähler für moderne-app.js Initialisierung
+    let retryCount = 0;
+    const maxRetries = 10;
+    
+    function tryInitializeModernApp() {
+        retryCount++;
+        console.log(`🎯 Attempting to initialize modern app (attempt ${retryCount}/${maxRetries})...`);
         
         if (typeof window.initializeModernApp === 'function') {
             console.log('🎯 initializeModernApp found, calling...');
-            window.initializeModernApp();
-            
-            // Navigation setup - NUR für die Main App
-            setTimeout(() => {
-                setupNavigationListeners(); // Jetzt sicher, da Login-Screen hidden ist
+            try {
+                window.initializeModernApp();
                 
-                if (typeof window.navigateTo === 'function') {
-                    console.log('🏠 Navigating to dashboard...');
-                    window.navigateTo('dashboard');
-                }
-            }, 200);
+                // Navigation setup nach erfolgreicher Initialisierung
+                setTimeout(() => {
+                    setupNavigationListeners(); // Jetzt sicher, da Login-Screen hidden ist
+                    
+                    if (typeof window.navigateTo === 'function') {
+                        console.log('🏠 Navigating to dashboard...');
+                        window.navigateTo('dashboard');
+                    } else {
+                        console.log('⚠️ navigateTo not available yet, setting up manual dashboard...');
+                        // Fallback: Zeige Dashboard-Inhalte direkt
+                        const contentArea = document.getElementById('contentArea');
+                        if (contentArea) {
+                            contentArea.innerHTML = '<div class="page-content"><h2>Dashboard</h2><p>Willkommen zurück, ' + user.first_name + '!</p></div>';
+                        }
+                    }
+                }, 300);
+                
+                console.log('✅ Modern app initialization successful!');
+            } catch (error) {
+                console.error('❌ Error during modern app initialization:', error);
+            }
             
+        } else if (retryCount < maxRetries) {
+            console.log(`⏳ initializeModernApp not found yet, retrying in ${500 * retryCount}ms...`);
+            setTimeout(tryInitializeModernApp, 500 * retryCount); // Progressive delay
         } else {
-            console.log('⏳ initializeModernApp not found yet, retrying...');
-            setTimeout(() => showMainApp(user), 300);
+            console.error('❌ Failed to initialize modern app after', maxRetries, 'attempts');
+            // Fallback: Zeige wenigstens einfache Inhalte
+            const contentArea = document.getElementById('contentArea');
+            if (contentArea) {
+                contentArea.innerHTML = `
+                    <div class="page-content">
+                        <h2>Willkommen, ${user.first_name || user.email}!</h2>
+                        <p>Login erfolgreich. Dashboard wird geladen...</p>
+                        <button onclick="location.reload()">App neu laden</button>
+                    </div>
+                `;
+            }
         }
-    }, 200);
+    }
     
-    // Mobile menu
+    // Starte Initialisierung mit längerem initialen Timeout
+    setTimeout(tryInitializeModernApp, 1000); // Erhöht von 200ms auf 1000ms
+    
+    // Mobile menu setup
     setTimeout(() => {
         initializeMobileMenu();
-    }, 300);
+    }, 1200);
 }
 
 // Sprachauswahl anzeigen
