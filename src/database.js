@@ -246,6 +246,34 @@ async function createInitialAdmin() {
   return { email, code };
 }
 
+async function createTestUser() {
+  const userData = {
+    email: 'test@sunshin3.pro',
+    password: 'test123',
+    companyName: 'Test Company GmbH',
+    firstName: 'Max',
+    lastName: 'Mustermann',
+    phone: '+49 123 456789',
+    address: 'Musterstraße 123',
+    city: 'Berlin',
+    postalCode: '10115',
+    country: 'Deutschland',
+    language: 'de'
+  };
+  
+  const result = await userFunctions.createUser(userData);
+  
+  if (result.success) {
+    console.log('=================================');
+    console.log('TEST-BENUTZER ERSTELLT!');
+    console.log('Email: test@sunshin3.pro');
+    console.log('Passwort: test123');
+    console.log('=================================');
+  }
+  
+  return result;
+}
+
 // Admin-Code generieren (6-stellig für bessere Sicherheit)
 function generateAdminCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
