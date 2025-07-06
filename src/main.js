@@ -37,8 +37,9 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
+      enableRemoteModule: true,
       webSecurity: false,
-      preload: path.join(__dirname, '../diagnose_preload.js')
+      preload: path.join(__dirname, 'preload.js')
     },
     show: false,
     titleBarStyle: 'hidden',
