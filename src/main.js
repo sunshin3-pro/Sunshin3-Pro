@@ -48,7 +48,7 @@ function createWindow() {
   });
 
   // Lade die Startseite - TEMPORARILY LOADING TEST FILE
-  mainWindow.loadFile(path.join(__dirname, '../electron_test.html'));
+  mainWindow.loadFile(path.join(__dirname, '../views/index.html'));
 
   // DevTools im Dev-Modus
   if (isDev) {
