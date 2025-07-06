@@ -805,24 +805,7 @@ function setupIPC() {
     }
   });
 
-  // Test MongoDB Connection
-  ipcMain.handle('test-mongo-connection', async (event) => {
-    try {
-      const mongoose = require('mongoose');
-      const uri = process.env.MONGODB_URI || 'mongodb+srv://ertl92:pzwh87E8hqzfH3YI@cluster0.6hfl4fv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
-      
-      await mongoose.connect(uri, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000
-      });
-      
-      await mongoose.disconnect();
-      return { success: true, message: 'MongoDB Verbindung erfolgreich!' };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  });
+  // MongoDB connection removed - using SQLite only
 
   // Update user profile
   ipcMain.handle('update-profile', async (event, profileData) => {
