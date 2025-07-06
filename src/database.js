@@ -232,9 +232,9 @@ async function createInitialAdmin() {
   return { email, code };
 }
 
-// Admin-Code generieren
+// Admin-Code generieren (6-stellig für bessere Sicherheit)
 function generateAdminCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // Admin-Funktionen
