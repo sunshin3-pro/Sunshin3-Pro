@@ -39,7 +39,7 @@ function createWindow() {
       contextIsolation: false,        // DISABLE for window.api access
       enableRemoteModule: true,       // ENABLE for full functionality
       webSecurity: false,            // DISABLE for local files
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, '../diagnose_preload.js')
     },
     show: false,
     titleBarStyle: 'hidden',
@@ -97,7 +97,7 @@ function createAdminWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, '../diagnose_preload.js')
     },
     backgroundColor: '#0F172A',
     frame: false
