@@ -50,7 +50,7 @@ function showErrorWithAnimation(message) {
     showError(message);
 }
 
-// Bessere Initialisierung
+// Bessere Initialisierung - Vereinfacht und robuster
 async function initializeApp() {
     if (isInitialized) return;
     
@@ -59,31 +59,46 @@ async function initializeApp() {
     try {
         // API Check
         if (!window.api) {
-            throw new Error('window.api not available');
+            console.warn('⚠️ window.api not available yet, using fallback');
+            // Fallback für Spracheinstellungen
+            currentLanguage = 'de';
+            await loadTranslations();
+            showLoginScreen();
+            return;
         }
         console.log('✅ API available');
 
         // Sprache laden
-        const savedLanguage = await window.api.getLanguage();
-        if (savedLanguage) {
-            currentLanguage = savedLanguage;
+        try {
+            const savedLanguage = await window.api.getLanguage();
+            if (savedLanguage) {
+                currentLanguage = savedLanguage;
+                await loadTranslations();
+                showLoginScreen();
+            } else {
+                showLanguageSelection();
+            }
+        } catch (error) {
+            console.warn('⚠️ Language loading failed, using default:', error);
+            currentLanguage = 'de';
             await loadTranslations();
             showLoginScreen();
-        } else {
-            showLanguageSelection();
         }
 
-        // Event Listener initialisieren
+        // Event Listener initialisieren - OHNE setupNavigationListeners!
         initializeEventListeners();
-        
-        // NICHT setupNavigationListeners() hier aufrufen - das passiert erst nach Login!
         
         isInitialized = true;
         console.log('✅ App initialization complete');
 
     } catch (error) {
         console.error('❌ App initialization failed:', error);
-        showError('Anwendung konnte nicht initialisiert werden: ' + error.message);
+        // Fallback auch bei komplettem Fehler
+        currentLanguage = 'de';
+        await loadTranslations();
+        showLoginScreen();
+        initializeEventListeners();
+        isInitialized = true;
     }
 }
 
