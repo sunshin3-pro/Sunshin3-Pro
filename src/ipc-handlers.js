@@ -6,8 +6,30 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 
+let currentSession = {
+  userId: null,
+  token: null,
+  user: null,
+  isAdmin: false
+};
+
 function setupIPC() {
   const db = getDb();
+
+  // Session Management
+  ipcMain.handle('get-current-session', async (event) => {
+    return currentSession;
+  });
+
+  ipcMain.handle('clear-session', async (event) => {
+    currentSession = {
+      userId: null,
+      token: null,
+      user: null,
+      isAdmin: false
+    };
+    return { success: true };
+  });
 
   // Admin Functions
   ipcMain.handle('check-admin-email', async (event, email) => {
