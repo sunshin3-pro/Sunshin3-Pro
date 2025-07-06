@@ -493,9 +493,185 @@ async function loadCustomersData() {
                 </div>
             `;
         }
-    } catch (error) {
-        console.error('❌ Customers loading error:', error);
+// Customer Form Handlers
+function setupCustomerFormHandlers() {
+    // Customer Type Change Handler
+    const customerType = document.getElementById('customerType');
+    const companyNameField = document.getElementById('companyNameField');
+    const taxIdField = document.getElementById('taxIdField');
+    
+    if (customerType) {
+        customerType.addEventListener('change', (e) => {
+            if (e.target.value === 'individual') {
+                companyNameField.style.display = 'none';
+                taxIdField.style.display = 'none';
+            } else {
+                companyNameField.style.display = 'block';
+                taxIdField.style.display = 'block';
+            }
+        });
     }
+    
+    // Add Customer Form Submit
+    const addCustomerForm = document.getElementById('addCustomerForm');
+    if (addCustomerForm) {
+        addCustomerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handleAddCustomerSubmit();
+        });
+    }
+    
+    // Search and Filter Handlers
+    const customerSearch = document.getElementById('customerSearch');
+    if (customerSearch) {
+        customerSearch.addEventListener('input', debounce(filterCustomers, 300));
+    }
+    
+    const customerTypeFilter = document.getElementById('customerTypeFilter');
+    if (customerTypeFilter) {
+        customerTypeFilter.addEventListener('change', filterCustomers);
+    }
+}
+
+// Add Customer Submit Handler
+async function handleAddCustomerSubmit() {
+    console.log('💾 Saving new customer...');
+    
+    const customerData = {
+        type: document.getElementById('customerType').value,
+        companyName: document.getElementById('companyName').value,
+        firstName: document.getElementById('firstName').value,
+        lastName: document.getElementById('lastName').value,
+        email: document.getElementById('customerEmail').value,
+        phone: document.getElementById('customerPhone').value,
+        address: document.getElementById('customerAddress').value,
+        city: document.getElementById('customerCity').value,
+        postalCode: document.getElementById('customerPostalCode').value,
+        country: document.getElementById('customerCountry').value,
+        taxId: document.getElementById('customerTaxId').value,
+        notes: document.getElementById('customerNotes').value
+    };
+    
+    // Validation
+    if (!customerData.firstName || !customerData.lastName) {
+        alert('Bitte geben Sie Vor- und Nachname ein.');
+        return;
+    }
+    
+    if (customerData.type === 'company' && !customerData.companyName) {
+        alert('Bitte geben Sie einen Firmennamen ein.');
+        return;
+    }
+    
+    try {
+        const result = await window.api.addCustomer(customerData);
+        
+        if (result.success) {
+            console.log('✅ Customer added successfully');
+            showToast('Kunde erfolgreich hinzugefügt!', 'success');
+            hideAddCustomerModal();
+            loadCustomersData(); // Reload customers
+        } else {
+            console.error('❌ Failed to add customer:', result.error);
+            alert('Fehler beim Hinzufügen des Kunden: ' + result.error);
+        }
+    } catch (error) {
+        console.error('❌ Add customer error:', error);
+        alert('Verbindungsfehler beim Hinzufügen des Kunden.');
+    }
+}
+
+// Modal Functions
+function showAddCustomerModal() {
+    const modal = document.getElementById('addCustomerModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Reset form
+        document.getElementById('addCustomerForm').reset();
+        document.getElementById('customerCountry').value = 'Deutschland';
+    }
+}
+
+function hideAddCustomerModal() {
+    const modal = document.getElementById('addCustomerModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Customer Actions
+function editCustomer(customerId) {
+    console.log('✏️ Editing customer:', customerId);
+    alert('Kunde bearbeiten - Feature wird implementiert!\nKunden-ID: ' + customerId);
+}
+
+function createInvoiceForCustomer(customerId) {
+    console.log('📄 Creating invoice for customer:', customerId);
+    alert('Rechnung für Kunden erstellen - Feature wird implementiert!\nKunden-ID: ' + customerId);
+}
+
+async function deleteCustomer(customerId) {
+    console.log('🗑️ Deleting customer:', customerId);
+    
+    if (confirm('Sind Sie sicher, dass Sie diesen Kunden löschen möchten?')) {
+        try {
+            const result = await window.api.deleteCustomer(customerId);
+            
+            if (result.success) {
+                showToast('Kunde erfolgreich gelöscht!', 'success');
+                loadCustomersData(); // Reload customers
+            } else {
+                alert('Fehler beim Löschen des Kunden: ' + result.error);
+            }
+        } catch (error) {
+            console.error('❌ Delete customer error:', error);
+            alert('Verbindungsfehler beim Löschen des Kunden.');
+        }
+    }
+}
+
+function refreshCustomers() {
+    console.log('🔄 Refreshing customers...');
+    loadCustomersData();
+}
+
+// Filter Functions
+function filterCustomers() {
+    const searchTerm = document.getElementById('customerSearch').value.toLowerCase();
+    const typeFilter = document.getElementById('customerTypeFilter').value;
+    
+    const customerCards = document.querySelectorAll('.customer-card');
+    
+    customerCards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        const matchesSearch = !searchTerm || text.includes(searchTerm);
+        const matchesType = !typeFilter || card.innerHTML.includes(typeFilter === 'company' ? 'Unternehmen' : 'Privatperson');
+        
+        if (matchesSearch && matchesType) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Utility Functions
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Update manageCustomers function
+function manageCustomers() {
+    console.log('👥 Managing customers...');
+    loadCustomersPage();
 }
 
 // DOM Content Loaded - Vereinfacht und direkt
