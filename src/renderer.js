@@ -144,8 +144,8 @@ function initializeEventListeners() {
         adminLoginBtn.addEventListener('click', async () => {
             const code = Array.from(codeInputs).map(input => input.value).join('');
             
-            if (code.length !== 4) {
-                showErrorWithAnimation('Bitte geben Sie einen 4-stelligen Code ein');
+            if (code.length !== 6) {
+                showErrorWithAnimation('Bitte geben Sie einen 6-stelligen Code ein');
                 return;
             }
 
