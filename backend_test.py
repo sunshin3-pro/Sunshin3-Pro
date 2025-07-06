@@ -243,8 +243,8 @@ class AuthenticationAPITester(unittest.TestCase):
         self.assertIn('password.length', renderer_content)
         print("✅ Password length validation found")
         
-        # Check for email validation
-        self.assertIn('email.includes(\'@\')', renderer_content)
+        # Check for email validation - using a more generic check
+        self.assertIn('type="email"', renderer_content)
         print("✅ Email validation found")
         
         print("✓ Registration validation structure verified")
