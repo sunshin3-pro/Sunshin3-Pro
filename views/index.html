@@ -341,51 +341,5 @@
        console.log('🔴 Emergency test button added');
      });
     </script>
-    
-    <!-- DIREKTER window.api FIX (da preload.js nicht lädt) -->
-    <script>
-      console.log('🔧 === DIREKTER WINDOW.API FIX ===');
-      
-      try {
-        // Da nodeIntegration: true ist, können wir require verwenden
-        if (typeof require !== 'undefined') {
-          console.log('✅ require() verfügbar');
-          
-          const { ipcRenderer } = require('electron');
-          console.log('✅ ipcRenderer geladen');
-          
-          // Erstelle window.api direkt
-          window.api = {
-            // Core Authentication
-            userLogin: (email, password) => {
-              console.log('🔐 Login attempt via direct API:', email);
-              return ipcRenderer.invoke('user-login', email, password);
-            },
-            userRegister: (userData) => ipcRenderer.invoke('user-register', userData),
-            userLogout: () => ipcRenderer.invoke('user-logout'),
-            getCurrentUser: () => ipcRenderer.invoke('get-current-user'),
-            
-            // Dashboard  
-            getDashboardStats: () => ipcRenderer.invoke('get-dashboard-stats'),
-            
-            // Window Controls
-            minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
-            maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
-            closeWindow: () => ipcRenderer.invoke('close-window'),
-            
-            // Test
-            test: () => 'Direct API working!'
-          };
-          
-          console.log('✅ window.api direkt erstellt mit', Object.keys(window.api).length, 'Methoden');
-          console.log('✅ Test:', window.api.test());
-          
-        } else {
-          console.error('❌ require() nicht verfügbar');
-        }
-      } catch (error) {
-        console.error('❌ Fehler bei direkter API-Erstellung:', error.message);
-      }
-    </script>
 </body>
 </html>
