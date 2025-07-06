@@ -222,17 +222,72 @@ ipcMain.handle('get-language', () => {
   return store.get('language', 'de');
 });
 
+// TEMPORÄRE Mock IPC für Tests ohne Datenbank
+function setupMockIPC() {
+  console.log('🧪 Setting up Mock IPC handlers for testing...');
+  
+  // Mock User Login
+  ipcMain.handle('user-login', async (event, email, password) => {
+    console.log('🧪 Mock login attempt:', email);
+    
+    if (email === 'test@sunshin3.pro' && password === 'test123') {
+      return {
+        success: true,
+        user: {
+          id: 1,
+          email: 'test@sunshin3.pro',
+          first_name: 'Test',
+          last_name: 'User',
+          company_name: 'Test Company'
+        },
+        token: 'mock-token-12345'
+      };
+    } else {
+      return {
+        success: false,
+        error: 'Ungültige Anmeldedaten'
+      };
+    }
+  });
+  
+  // Mock User Register
+  ipcMain.handle('user-register', async (event, userData) => {
+    console.log('🧪 Mock registration:', userData.email);
+    return {
+      success: true,
+      message: 'Registrierung erfolgreich (Mock)'
+    };
+  });
+  
+  // Mock andere Funktionen
+  ipcMain.handle('get-current-user', async () => ({
+    success: true,
+    user: { email: 'test@sunshin3.pro', first_name: 'Test' }
+  }));
+  
+  ipcMain.handle('user-logout', async () => ({ success: true }));
+  
+  console.log('✅ Mock IPC handlers set up');
+}
+
 // App Events
 app.whenReady().then(async () => {
   try {
-    // Datenbank initialisieren
-    await initDatabase();
+    console.log('🚀 Starting app without database for testing...');
     
-    // IPC Handler einrichten
-    setupIPC();
+    // TEMPORÄR: Datenbank-Initialisierung übersprungen
+    // await initDatabase();
+    
+    // TEMPORÄR: IPC Handler ohne Datenbank
+    // setupIPC();
+    
+    // Einfache Mock-IPC für Tests
+    setupMockIPC();
     
     // Fenster erstellen
     createWindow();
+    
+    console.log('✅ App started successfully in test mode');
   } catch (error) {
     console.error('Fehler beim App-Start:', error);
     dialog.showErrorBox('Fehler', 'Die Anwendung konnte nicht gestartet werden.');
