@@ -126,7 +126,7 @@ function initializeEventListeners() {
     // Code-Input Auto-Advance
     codeInputs.forEach((input, index) => {
         input.addEventListener('input', (e) => {
-            if (e.target.value && index < 3) {
+            if (e.target.value && index < 5) {
                 codeInputs[index + 1].focus();
             }
         });
