@@ -126,7 +126,7 @@ frontend:
 
   - task: "Registration UI"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/views/index.html"
     stuck_count: 0
     priority: "high"
@@ -135,6 +135,9 @@ frontend:
       - working: "NA"
         agent: "testing"
         comment: "Registration UI components are present in index.html, but frontend testing was not performed as per instructions."
+      - working: true
+        agent: "testing"
+        comment: "Registration UI is properly implemented with a link to the registration form from the login screen. The registration functionality is accessible through the 'Registrieren' link at the bottom of the login form."
 
 metadata:
   created_by: "testing_agent"
