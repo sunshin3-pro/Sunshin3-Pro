@@ -14,6 +14,17 @@ let currentSession = {
   isAdmin: false
 };
 
+function getStatusLabel(status) {
+  const labels = {
+    'draft': 'Entwurf',
+    'sent': 'Versendet', 
+    'paid': 'Bezahlt',
+    'overdue': 'Überfällig',
+    'cancelled': 'Storniert'
+  };
+  return labels[status] || status;
+}
+
 function getCurrentUserId() {
   return currentSession.userId || null;
 }
@@ -497,6 +508,40 @@ function setupIPC() {
     }
   });
 
+  // Generate next invoice number - BUSINESS LOGIC
+  ipcMain.handle('generate-invoice-number', async (event) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      const currentYear = new Date().getFullYear();
+      const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+      
+      // Get last invoice number for this year
+      const lastInvoice = db.prepare(`
+        SELECT invoice_number FROM invoices 
+        WHERE user_id = ? AND invoice_number LIKE ? 
+        ORDER BY invoice_number DESC LIMIT 1
+      `).get(userId, `${currentYear}%`);
+      
+      let nextNumber = 1;
+      if (lastInvoice) {
+        // Extract number from format: YYYY-MM-NNNN
+        const numberPart = lastInvoice.invoice_number.split('-')[2];
+        nextNumber = parseInt(numberPart) + 1;
+      }
+      
+      // Format: 2024-03-0001
+      const invoiceNumber = `${currentYear}-${currentMonth}-${String(nextNumber).padStart(4, '0')}`;
+      
+      return { success: true, invoiceNumber };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
   ipcMain.handle('create-invoice', async (event, invoice) => {
     try {
       const userId = getCurrentUserId();
@@ -504,6 +549,41 @@ function setupIPC() {
         return { success: false, error: 'Nicht angemeldet' };
       }
 
+      // Auto-generate invoice number if not provided
+      if (!invoice.invoiceNumber) {
+        const numberResult = await ipcMain.handle('generate-invoice-number', event);
+        if (!numberResult.success) {
+          return numberResult;
+        }
+        invoice.invoiceNumber = numberResult.invoiceNumber;
+      }
+
+      // DEUTSCHE STEUERBERECHNUNG
+      const calculateTaxes = (items) => {
+        let subtotal = 0;
+        let totalTax = 0;
+        
+        items.forEach(item => {
+          const netAmount = item.quantity * item.unitPrice;
+          const taxRate = item.taxRate || 19; // Standard MwSt. Deutschland
+          const taxAmount = netAmount * (taxRate / 100);
+          
+          subtotal += netAmount;
+          totalTax += taxAmount;
+          
+          // Set item total including tax
+          item.total = netAmount + taxAmount;
+        });
+        
+        return {
+          subtotal: Math.round(subtotal * 100) / 100,
+          taxAmount: Math.round(totalTax * 100) / 100,
+          total: Math.round((subtotal + totalTax) * 100) / 100
+        };
+      };
+
+      const taxCalc = calculateTaxes(invoice.items || []);
+      
       const insertInvoice = db.prepare(`
         INSERT INTO invoices (
           user_id, customer_id, invoice_number, invoice_date, due_date,
@@ -519,19 +599,22 @@ function setupIPC() {
       `);
       
       const transaction = db.transaction((invoice) => {
+        // Calculate due date (14 days default)
+        const dueDate = invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
         const invoiceResult = insertInvoice.run(
           userId,
           invoice.customerId,
           invoice.invoiceNumber,
-          invoice.invoiceDate,
-          invoice.dueDate,
+          invoice.invoiceDate || new Date().toISOString().split('T')[0],
+          dueDate,
           invoice.status || 'draft',
-          invoice.subtotal,
-          invoice.taxAmount,
-          invoice.total,
+          taxCalc.subtotal,
+          taxCalc.taxAmount,
+          taxCalc.total,
           invoice.currency || 'EUR',
-          invoice.notes,
-          invoice.paymentTerms,
+          invoice.notes || 'Zahlbar innerhalb von 14 Tagen netto.',
+          invoice.paymentTerms || '14 Tage netto',
           invoice.language || 'de'
         );
         
@@ -541,11 +624,11 @@ function setupIPC() {
           invoice.items.forEach((item, index) => {
             insertItem.run(
               invoiceId,
-              item.productId,
+              item.productId || null,
               item.description,
               item.quantity,
               item.unitPrice,
-              item.taxRate,
+              item.taxRate || 19,
               item.discount || 0,
               item.total,
               index + 1
@@ -557,8 +640,15 @@ function setupIPC() {
       });
       
       const invoiceId = transaction(invoice);
-      return { success: true, id: invoiceId };
+      
+      return { 
+        success: true, 
+        id: invoiceId, 
+        invoiceNumber: invoice.invoiceNumber,
+        totals: taxCalc
+      };
     } catch (error) {
+      console.error('Create invoice error:', error);
       return { success: false, error: error.message };
     }
   });
@@ -668,7 +758,7 @@ function setupIPC() {
     }
   });
 
-  // PDF Generation
+  // PDF Generation - ERWEITERT für Business Features
   ipcMain.handle('generate-invoice-pdf', async (event, invoiceId) => {
     try {
       const userId = getCurrentUserId();
@@ -677,7 +767,9 @@ function setupIPC() {
       }
 
       const invoice = db.prepare(`
-        SELECT i.*, c.*, u.company_name as user_company
+        SELECT i.*, c.*, u.company_name as user_company, u.address as user_address,
+               u.city as user_city, u.postal_code as user_postal, u.country as user_country,
+               u.phone as user_phone, u.email as user_email
         FROM invoices i
         LEFT JOIN customers c ON i.customer_id = c.id
         LEFT JOIN users u ON i.user_id = u.id
@@ -692,52 +784,145 @@ function setupIPC() {
         SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY position
       `).all(invoiceId);
       
-      const doc = new PDFDocument({ margin: 50 });
-      const filename = `invoice_${invoice.invoice_number}.pdf`;
+      const doc = new PDFDocument({ 
+        margin: 50,
+        size: 'A4',
+        info: {
+          Title: `Rechnung ${invoice.invoice_number}`,
+          Author: invoice.user_company || 'Sunshin3 Pro',
+          Subject: `Rechnung für ${invoice.company_name || invoice.first_name + ' ' + invoice.last_name}`,
+          CreationDate: new Date()
+        }
+      });
+      
+      const filename = `rechnung_${invoice.invoice_number}_${new Date().toISOString().split('T')[0]}.pdf`;
       const filePath = path.join(require('electron').app.getPath('downloads'), filename);
       
       doc.pipe(fs.createWriteStream(filePath));
       
-      doc.fontSize(20).text(invoice.user_company || 'Sunshin3 Pro', 50, 50);
-      doc.fontSize(12).text('RECHNUNG', 50, 100);
+      // PROFESSIONELLER PDF-HEADER
+      doc.fontSize(20)
+         .fillColor('#2c3e50')
+         .text(invoice.user_company || 'Ihr Unternehmen', 50, 50);
       
-      doc.text(`Rechnungsnummer: ${invoice.invoice_number}`, 50, 130);
-      doc.text(`Datum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}`, 50, 150);
-      doc.text(`Fällig: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}`, 50, 170);
+      doc.fontSize(10)
+         .fillColor('#7f8c8d')
+         .text(invoice.user_address || '', 50, 80)
+         .text(`${invoice.user_postal || ''} ${invoice.user_city || ''}`, 50, 95)
+         .text(invoice.user_country || 'Deutschland', 50, 110)
+         .text(`Tel: ${invoice.user_phone || ''}`, 50, 125)
+         .text(`E-Mail: ${invoice.user_email || ''}`, 50, 140);
       
-      doc.text('Kunde:', 300, 130);
-      doc.text(invoice.company_name || `${invoice.first_name} ${invoice.last_name}`, 300, 150);
-      doc.text(invoice.address || '', 300, 170);
-      doc.text(`${invoice.postal_code || ''} ${invoice.city || ''}`, 300, 190);
+      // RECHNUNG HEADER
+      doc.fontSize(24)
+         .fillColor('#e74c3c')
+         .text('RECHNUNG', 400, 50);
       
-      let y = 250;
-      doc.text('Pos.', 50, y);
-      doc.text('Beschreibung', 100, y);
-      doc.text('Menge', 300, y);
-      doc.text('Preis', 370, y);
-      doc.text('Gesamt', 450, y);
+      doc.fontSize(12)
+         .fillColor('#2c3e50')
+         .text(`Rechnungsnummer: ${invoice.invoice_number}`, 400, 85)
+         .text(`Rechnungsdatum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}`, 400, 105)
+         .text(`Fälligkeitsdatum: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}`, 400, 125);
       
-      y += 20;
+      // STATUS
+      const statusColor = invoice.status === 'paid' ? '#27ae60' : invoice.status === 'overdue' ? '#e74c3c' : '#f39c12';
+      doc.fontSize(10)
+         .fillColor(statusColor)
+         .text(`Status: ${getStatusLabel(invoice.status)}`, 400, 145);
+      
+      // KUNDE
+      doc.fontSize(14)
+         .fillColor('#2c3e50')
+         .text('Rechnungsempfänger:', 50, 200);
+      
+      doc.fontSize(12)
+         .text(invoice.company_name || `${invoice.first_name} ${invoice.last_name}`, 50, 220)
+         .text(invoice.address || '', 50, 240)
+         .text(`${invoice.postal_code || ''} ${invoice.city || ''}`, 50, 260)
+         .text(invoice.country || '', 50, 280);
+      
+      if (invoice.tax_id) {
+        doc.text(`USt-IdNr.: ${invoice.tax_id}`, 50, 300);
+      }
+      
+      // TABELLE
+      let y = 350;
+      
+      // Tabellen-Header
+      doc.rect(50, y, 500, 25).fillAndStroke('#3498db', '#2980b9');
+      doc.fontSize(10)
+         .fillColor('#ffffff')
+         .text('Pos.', 60, y + 8)
+         .text('Beschreibung', 100, y + 8)
+         .text('Menge', 300, y + 8)
+         .text('Einzelpreis', 360, y + 8)
+         .text('MwSt.', 420, y + 8)
+         .text('Gesamt', 480, y + 8);
+      
+      y += 25;
+      
+      // Tabellen-Inhalt
+      let totalNet = 0;
+      let totalTax = 0;
+      
       items.forEach((item, index) => {
-        doc.text(index + 1, 50, y);
-        doc.text(item.description, 100, y);
-        doc.text(item.quantity, 300, y);
-        doc.text(`€ ${item.unit_price}`, 370, y);
-        doc.text(`€ ${item.total}`, 450, y);
+        const netAmount = item.quantity * item.unit_price;
+        const taxAmount = netAmount * (item.tax_rate / 100);
+        totalNet += netAmount;
+        totalTax += taxAmount;
+        
+        const bgColor = index % 2 === 0 ? '#ecf0f1' : '#ffffff';
+        doc.rect(50, y, 500, 20).fillAndStroke(bgColor, '#bdc3c7');
+        
+        doc.fontSize(9)
+           .fillColor('#2c3e50')
+           .text((index + 1).toString(), 60, y + 6)
+           .text(item.description, 100, y + 6, { width: 180 })
+           .text(item.quantity.toString(), 300, y + 6)
+           .text(`€ ${item.unit_price.toFixed(2)}`, 360, y + 6)
+           .text(`${item.tax_rate}%`, 420, y + 6)
+           .text(`€ ${(netAmount + taxAmount).toFixed(2)}`, 480, y + 6);
+        
         y += 20;
       });
       
+      // SUMMEN
       y += 20;
-      doc.text(`Zwischensumme: € ${invoice.subtotal}`, 350, y);
-      y += 20;
-      doc.text(`MwSt.: € ${invoice.tax_amount}`, 350, y);
-      y += 20;
-      doc.fontSize(14).text(`Gesamt: € ${invoice.total}`, 350, y);
+      doc.fontSize(11)
+         .fillColor('#2c3e50')
+         .text(`Zwischensumme (netto): € ${totalNet.toFixed(2)}`, 350, y)
+         .text(`MwSt. (${invoice.tax_rate || 19}%): € ${totalTax.toFixed(2)}`, 350, y + 20)
+         .fontSize(14)
+         .fillColor('#e74c3c')
+         .text(`Gesamtbetrag: € ${(totalNet + totalTax).toFixed(2)}`, 350, y + 45);
+      
+      // ZAHLUNGSHINWEISE
+      y += 100;
+      if (y > 700) {
+        doc.addPage();
+        y = 50;
+      }
+      
+      doc.fontSize(12)
+         .fillColor('#2c3e50')
+         .text('Zahlungshinweise:', 50, y);
+      
+      doc.fontSize(10)
+         .text(`Bitte überweisen Sie den Betrag bis zum ${new Date(invoice.due_date).toLocaleDateString('de-DE')}.`, 50, y + 20)
+         .text('Zahlungsziel: 14 Tage netto', 50, y + 35)
+         .text(invoice.notes || 'Vielen Dank für Ihr Vertrauen!', 50, y + 55);
+      
+      // FOOTER
+      doc.fontSize(8)
+         .fillColor('#95a5a6')
+         .text('Diese Rechnung wurde elektronisch erstellt und ist ohne Unterschrift gültig.', 50, 750)
+         .text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} mit Sunshin3 Invoice Pro`, 50, 765);
       
       doc.end();
       
-      return { success: true, path: filePath };
+      return { success: true, path: filePath, filename };
     } catch (error) {
+      console.error('PDF generation error:', error);
       return { success: false, error: error.message };
     }
   });
@@ -965,61 +1150,171 @@ function setupIPC() {
     }
   });
 
-  // Email
-  ipcMain.handle('send-invoice-email', async (event, invoiceId, recipient) => {
+  // Email - PROFESSIONAL BUSINESS EMAIL SYSTEM
+  ipcMain.handle('send-invoice-email', async (event, invoiceId, emailData) => {
     try {
       const userId = getCurrentUserId();
       if (!userId) {
         return { success: false, error: 'Nicht angemeldet' };
       }
 
-      const settings = db.prepare('SELECT * FROM settings WHERE user_id = ? AND key LIKE "smtp_%"').all(userId);
+      // Get user's SMTP settings
+      const smtpSettings = db.prepare('SELECT * FROM settings WHERE user_id = ? AND key LIKE "smtp_%"').all(userId);
       const smtpConfig = {};
-      settings.forEach(setting => {
+      smtpSettings.forEach(setting => {
         const key = setting.key.replace('smtp_', '');
         smtpConfig[key] = setting.value;
       });
       
       if (!smtpConfig.host || !smtpConfig.user) {
-        return { success: false, error: 'E-Mail-Einstellungen nicht konfiguriert' };
+        return { success: false, error: 'E-Mail-Einstellungen nicht konfiguriert. Bitte konfigurieren Sie SMTP in den Einstellungen.' };
+      }
+
+      // Get invoice details
+      const invoice = db.prepare(`
+        SELECT i.*, c.*, u.company_name as user_company, u.first_name as user_first_name, u.last_name as user_last_name
+        FROM invoices i
+        LEFT JOIN customers c ON i.customer_id = c.id
+        LEFT JOIN users u ON i.user_id = u.id
+        WHERE i.id = ? AND i.user_id = ?
+      `).get(invoiceId, userId);
+
+      if (!invoice) {
+        return { success: false, error: 'Rechnung nicht gefunden' };
+      }
+
+      // Generate PDF
+      const pdfResult = await ipcMain.handle('generate-invoice-pdf', null, invoiceId);
+      if (!pdfResult.success) {
+        return { success: false, error: 'PDF konnte nicht erstellt werden: ' + pdfResult.error };
       }
 
       const transporter = nodemailer.createTransporter({
         host: smtpConfig.host,
-        port: smtpConfig.port || 587,
+        port: parseInt(smtpConfig.port) || 587,
         secure: smtpConfig.secure === 'true',
         auth: {
           user: smtpConfig.user,
           pass: smtpConfig.password
         }
       });
+
+      // PROFESSIONAL EMAIL TEMPLATES
+      const customerName = invoice.company_name || `${invoice.first_name} ${invoice.last_name}`;
+      const senderName = invoice.user_company || `${invoice.user_first_name} ${invoice.user_last_name}`;
       
-      const pdfResult = await ipcMain.handle('generate-invoice-pdf', null, invoiceId);
-      if (!pdfResult.success) throw new Error(pdfResult.error);
+      const htmlTemplate = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .header { background: #f8f9fa; padding: 20px; border-left: 4px solid #007bff; }
+            .content { padding: 20px; }
+            .invoice-details { background: #e9ecef; padding: 15px; border-radius: 5px; margin: 15px 0; }
+            .footer { background: #f8f9fa; padding: 15px; font-size: 12px; color: #6c757d; }
+            .amount { font-size: 18px; font-weight: bold; color: #28a745; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>Rechnung ${invoice.invoice_number}</h2>
+            <p>von ${senderName}</p>
+          </div>
+          
+          <div class="content">
+            <p>Sehr geehrte Damen und Herren,</p>
+            <p>anbei erhalten Sie die Rechnung ${invoice.invoice_number} vom ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}.</p>
+            
+            <div class="invoice-details">
+              <strong>Rechnungsdetails:</strong><br>
+              Rechnungsnummer: ${invoice.invoice_number}<br>
+              Rechnungsdatum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}<br>
+              Fälligkeitsdatum: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}<br>
+              <span class="amount">Gesamtbetrag: €${parseFloat(invoice.total).toFixed(2)}</span>
+            </div>
+            
+            <p>Bitte überweisen Sie den Betrag bis zum <strong>${new Date(invoice.due_date).toLocaleDateString('de-DE')}</strong>.</p>
+            
+            <p>Bei Fragen stehen wir Ihnen gerne zur Verfügung.</p>
+            
+            <p>Mit freundlichen Grüßen<br>
+            ${senderName}</p>
+          </div>
+          
+          <div class="footer">
+            <p>Diese E-Mail wurde automatisch von Sunshin3 Invoice Pro generiert.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textTemplate = `
+Rechnung ${invoice.invoice_number}
+
+Sehr geehrte Damen und Herren,
+
+anbei erhalten Sie die Rechnung ${invoice.invoice_number} vom ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}.
+
+Rechnungsdetails:
+- Rechnungsnummer: ${invoice.invoice_number}
+- Rechnungsdatum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}
+- Fälligkeitsdatum: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}
+- Gesamtbetrag: €${parseFloat(invoice.total).toFixed(2)}
+
+Bitte überweisen Sie den Betrag bis zum ${new Date(invoice.due_date).toLocaleDateString('de-DE')}.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+${senderName}
+      `;
       
-      const info = await transporter.sendMail({
-        from: smtpConfig.user,
-        to: recipient,
-        subject: 'Ihre Rechnung',
-        text: 'Anbei finden Sie Ihre Rechnung.',
+      const mailOptions = {
+        from: `"${senderName}" <${smtpConfig.user}>`,
+        to: emailData.recipient || invoice.email,
+        subject: emailData.subject || `Rechnung ${invoice.invoice_number} von ${senderName}`,
+        text: emailData.message || textTemplate,
+        html: htmlTemplate,
         attachments: [{
-          filename: path.basename(pdfResult.path),
+          filename: pdfResult.filename || `rechnung_${invoice.invoice_number}.pdf`,
           path: pdfResult.path
         }]
-      });
+      };
+
+      const info = await transporter.sendMail(mailOptions);
       
-      return { success: true, messageId: info.messageId };
+      // Log the email activity
+      db.prepare(`
+        INSERT INTO email_logs (user_id, invoice_id, recipient, subject, status, message_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `).run(userId, invoiceId, mailOptions.to, mailOptions.subject, 'sent', info.messageId);
+      
+      // Update invoice status if it was draft
+      if (invoice.status === 'draft') {
+        db.prepare('UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .run('sent', invoiceId);
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId, 
+        recipient: mailOptions.to,
+        pdfPath: pdfResult.path
+      };
     } catch (error) {
+      console.error('Email sending error:', error);
       return { success: false, error: error.message };
     }
   });
 
-  // Test Email Connection
+  // SMTP Configuration Test
   ipcMain.handle('test-email-connection', async (event, config) => {
     try {
       const transporter = nodemailer.createTransporter({
         host: config.host,
-        port: config.port,
+        port: parseInt(config.port) || 587,
         secure: config.secure === 'true',
         auth: {
           user: config.user,
@@ -1028,7 +1323,42 @@ function setupIPC() {
       });
       
       await transporter.verify();
-      return { success: true, message: 'E-Mail Verbindung erfolgreich!' };
+      return { success: true, message: 'E-Mail Verbindung erfolgreich getestet!' };
+    } catch (error) {
+      return { success: false, error: `Verbindungstest fehlgeschlagen: ${error.message}` };
+    }
+  });
+
+  // Save SMTP Settings
+  ipcMain.handle('save-smtp-settings', async (event, settings) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      const settingsToSave = {
+        'smtp_host': settings.host,
+        'smtp_port': settings.port,
+        'smtp_secure': settings.secure,
+        'smtp_user': settings.user,
+        'smtp_password': settings.password
+      };
+
+      for (const [key, value] of Object.entries(settingsToSave)) {
+        const existing = db.prepare('SELECT id FROM settings WHERE user_id = ? AND key = ?')
+          .get(userId, key);
+        
+        if (existing) {
+          db.prepare('UPDATE settings SET value = ? WHERE user_id = ? AND key = ?')
+            .run(value, userId, key);
+        } else {
+          db.prepare('INSERT INTO settings (user_id, key, value) VALUES (?, ?, ?)')
+            .run(userId, key, value);
+        }
+      }
+
+      return { success: true, message: 'SMTP-Einstellungen gespeichert' };
     } catch (error) {
       return { success: false, error: error.message };
     }
