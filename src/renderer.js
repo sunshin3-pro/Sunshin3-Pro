@@ -6,6 +6,22 @@ let isAdminMode = false;
 let adminEmail = '';
 let isInitialized = false;
 
+// Globale Funktionen
+window.loadLiveDashboardStats = loadLiveDashboardStats;
+window.createNewInvoice = createNewInvoice;
+window.manageCustomers = manageCustomers;
+window.viewAllInvoices = viewAllInvoices;
+window.refreshDashboard = refreshDashboard;
+
+// Customer Management Functions
+window.loadCustomersPage = loadCustomersPage;
+window.showAddCustomerModal = showAddCustomerModal;
+window.hideAddCustomerModal = hideAddCustomerModal;
+window.editCustomer = editCustomer;
+window.createInvoiceForCustomer = createInvoiceForCustomer;
+window.deleteCustomer = deleteCustomer;
+window.refreshCustomers = refreshCustomers;
+
 // Mobile Menu Handler
 function initializeMobileMenu() {
     const header = document.querySelector('.modern-header');
