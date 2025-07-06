@@ -156,17 +156,19 @@ function setupDirectButtonHandlers() {
                         console.log('Login result:', result);
                         
                         if (result && result.success) {
-                            alert('Login erfolgreich!');
+                            console.log('🎉 Login successful! Transitioning to main app...');
                             showMainApp(result.user);
                         } else {
-                            alert('Login fehlgeschlagen: ' + (result?.error || 'Unbekannter Fehler'));
+                            console.log('❌ Login failed:', result?.error || 'Unbekannter Fehler');
+                            showErrorWithAnimation(result?.error || 'Login fehlgeschlagen');
                         }
                     } else {
-                        alert('API nicht verfügbar');
+                        console.error('❌ API not available');
+                        showErrorWithAnimation('API nicht verfügbar');
                     }
                 } catch (error) {
                     console.error('Login error:', error);
-                    alert('Fehler beim Login: ' + error.message);
+                    showErrorWithAnimation('Fehler beim Login: ' + error.message);
                 }
             });
             console.log('✅ LOGIN button handler added');
