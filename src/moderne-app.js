@@ -10,6 +10,18 @@ let subscriptionLimits = {
 // Store dashboard stats globally for usage tracking
 window.lastDashboardStats = {};
 
+// Utility function to escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
 // Get current usage based on subscription limits
 function getCurrentUsage() {
     const stats = window.lastDashboardStats || {};
