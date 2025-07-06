@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Flow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #0F172A;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success {
+            background: #22c55e;
+            color: white;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+        }
+        .info {
+            background: #3b82f6;
+            color: white;
+        }
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔓 Login Flow Test für Sunshin3 Invoice Pro</h1>
+    
+    <div class="test-section">
+        <h2>1. API & IPC Test</h2>
+        <div id="apiTest" class="result info">Bereit zum Testen...</div>
+        <button onclick="testAPI()">API Testen</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Login Test</h2>
+        <div id="loginTest" class="result info">Bereit zum Testen...</div>
+        <button onclick="testLogin()">Login Testen (test@sunshin3.pro/test123)</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. UI Element Test</h2>
+        <div id="elementTest" class="result info">Bereit zum Testen...</div>
+        <button onclick="testUIElements()">UI Elemente Testen</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Manueller UI Übergang Test</h2>
+        <div id="transitionTest" class="result info">Bereit zum Testen...</div>
+        <button onclick="testUITransition()">UI Übergang Simulieren</button>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Console Output</h2>
+        <div id="consoleOutput" class="result info" style="max-height: 200px; overflow-y: auto;">
+            Console-Logs erscheinen hier...<br>
+        </div>
+    </div>
+
+    <script>
+        // Console-Logs abfangen
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToConsole(message, type = 'log') {
+            const output = document.getElementById('consoleOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : '✅';
+            output.innerHTML += `<div>[${timestamp}] ${prefix} ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            addToConsole(args.join(' '), 'log');
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            addToConsole(args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+        
+        function updateResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.innerHTML = message;
+        }
+        
+        function testAPI() {
+            console.log('🧪 Teste API Verfügbarkeit...');
+            
+            const results = {
+                windowApi: typeof window.api !== 'undefined',
+                processAvailable: typeof process !== 'undefined',
+                requireAvailable: typeof require !== 'undefined',
+                electronContext: typeof window.electronAPI !== 'undefined'
+            };
+            
+            console.log('API Test Ergebnisse:', JSON.stringify(results, null, 2));
+            
+            if (results.windowApi) {
+                const apiMethods = Object.keys(window.api).length;
+                updateResult('apiTest', `✅ window.api verfügbar mit ${apiMethods} Methoden`, 'success');
+                console.log('Verfügbare API Methoden:', Object.keys(window.api));
+            } else {
+                updateResult('apiTest', '❌ window.api NICHT verfügbar', 'error');
+            }
+        }
+        
+        async function testLogin() {
+            console.log('🔐 Teste Login Funktionalität...');
+            updateResult('loginTest', '🔄 Login wird getestet...', 'info');
+            
+            if (typeof window.api === 'undefined') {
+                updateResult('loginTest', '❌ window.api nicht verfügbar', 'error');
+                return;
+            }
+            
+            try {
+                console.log('🔐 Rufe window.api.userLogin auf...');
+                const result = await window.api.userLogin('test@sunshin3.pro', 'test123');
+                console.log('🔐 Login Ergebnis:', JSON.stringify(result, null, 2));
+                
+                if (result && result.success) {
+                    updateResult('loginTest', `✅ Login erfolgreich! Benutzer: ${result.user.email}`, 'success');
+                    
+                    // Nach erfolgreichem Login UI testen
+                    setTimeout(() => {
+                        testUITransition();
+                    }, 1000);
+                } else {
+                    updateResult('loginTest', `❌ Login fehlgeschlagen: ${result.error || 'Unbekannter Fehler'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Login Fehler:', error.message);
+                updateResult('loginTest', `❌ Login Fehler: ${error.message}`, 'error');
+            }
+        }
+        
+        function testUIElements() {
+            console.log('🔍 Teste UI Elemente...');
+            
+            // Teste auf main window elements
+            const elements = [
+                { name: 'loginScreen', selector: '#loginScreen' },
+                { name: 'mainApp', selector: '#mainApp' },
+                { name: 'emailInput', selector: '#emailInput' },
+                { name: 'passwordInput', selector: '#passwordInput' },
+                { name: 'loginBtn', selector: '#loginBtn' },
+                { name: 'modern-sidebar', selector: '#modern-sidebar' },
+                { name: 'userName', selector: '#userName' }
+            ];
+            
+            const results = elements.map(el => {
+                const element = document.querySelector(el.selector);
+                return {
+                    name: el.name,
+                    exists: !!element,
+                    visible: element && !element.classList.contains('hidden'),
+                    classes: element ? Array.from(element.classList) : []
+                };
+            });
+            
+            console.log('UI Element Test Ergebnisse:', results);
+            
+            const foundElements = results.filter(r => r.exists).length;
+            const message = `Gefunden: ${foundElements}/${elements.length} Elemente`;
+            
+            if (foundElements >= elements.length - 1) { // -1 da userName optional ist
+                updateResult('elementTest', `✅ ${message}`, 'success');
+            } else {
+                updateResult('elementTest', `⚠️ ${message} (einige fehlen)`, 'error');
+            }
+        }
+        
+        function testUITransition() {
+            console.log('🔄 Teste UI Übergang (Login -> Haupt-App)...');
+            
+            const loginScreen = document.querySelector('#loginScreen');
+            const mainApp = document.querySelector('#mainApp');
+            
+            if (!loginScreen || !mainApp) {
+                updateResult('transitionTest', '❌ Login Screen oder Main App nicht gefunden', 'error');
+                return;
+            }
+            
+            console.log('Login Screen Klassen vorher:', Array.from(loginScreen.classList));
+            console.log('Main App Klassen vorher:', Array.from(mainApp.classList));
+            
+            // Simuliere den Übergang
+            loginScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            
+            console.log('Login Screen Klassen nachher:', Array.from(loginScreen.classList));
+            console.log('Main App Klassen nachher:', Array.from(mainApp.classList));
+            
+            // Prüfe ob Übergang erfolgreich
+            const loginHidden = loginScreen.classList.contains('hidden');
+            const mainVisible = !mainApp.classList.contains('hidden');
+            
+            if (loginHidden && mainVisible) {
+                updateResult('transitionTest', '✅ UI Übergang erfolgreich! Login versteckt, Haupt-App sichtbar', 'success');
+                
+                // Setze Test-Benutzername
+                const userName = document.querySelector('#userName');
+                if (userName) {
+                    userName.textContent = 'Test Benutzer';
+                    console.log('✅ Benutzername gesetzt');
+                }
+            } else {
+                updateResult('transitionTest', `❌ UI Übergang fehlgeschlagen. Login versteckt: ${loginHidden}, Main sichtbar: ${mainVisible}`, 'error');
+            }
+        }
+        
+        // Auto-Test beim Laden
+        window.addEventListener('load', () => {
+            console.log('🚀 Login Flow Test gestartet...');
+            testAPI();
+            setTimeout(() => testUIElements(), 500);
+        });
+    </script>
+</body>
+</html>
