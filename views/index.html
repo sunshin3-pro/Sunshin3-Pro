@@ -293,5 +293,53 @@
     
     <!-- DEBUG TEST SCRIPT -->
     <script src="../assets/quick-test.js"></script>
+    
+    <!-- INLINE TEST SCRIPT -->
+    <script>
+     console.log('🧪 INLINE SCRIPT EXECUTING!');
+     
+     // Test basic functionality
+     document.addEventListener('DOMContentLoaded', function() {
+       console.log('🧪 DOM LOADED - Inline script works!');
+       
+       // Create visible test button
+       const testButton = document.createElement('button');
+       testButton.innerHTML = '🔴 EMERGENCY LOGIN TEST';
+       testButton.style.cssText = `
+         position: fixed;
+         top: 10px;
+         left: 10px;
+         z-index: 99999;
+         background: red;
+         color: white;
+         padding: 15px;
+         border: none;
+         border-radius: 5px;
+         font-weight: bold;
+         cursor: pointer;
+       `;
+       
+       testButton.onclick = function() {
+         console.log('🔴 EMERGENCY LOGIN CLICKED!');
+         alert('EMERGENCY LOGIN WORKS!');
+         
+         // Try actual login
+         if (window.api && window.api.userLogin) {
+           window.api.userLogin('test@sunshin3.pro', 'test123').then(result => {
+             console.log('Emergency login result:', result);
+             alert('Login result: ' + JSON.stringify(result));
+           }).catch(error => {
+             console.error('Emergency login error:', error);
+             alert('Login error: ' + error.message);
+           });
+         } else {
+           alert('window.api not available!');
+         }
+       };
+       
+       document.body.appendChild(testButton);
+       console.log('🔴 Emergency test button added');
+     });
+    </script>
 </body>
 </html>
