@@ -1,7 +1,11 @@
 
 const { ipcRenderer } = require('electron');
-console.log('🔄 PRELOAD.JS STARTING TO LOAD...');
-console.log('🔄 ipcRenderer loaded successfully');
+
+// Debug-Logs für Preload-Diagnose
+console.log('🚀 === PRELOAD.JS GESTARTET ===');
+console.log('✅ ipcRenderer erfolgreich geladen');
+console.log('✅ Electron Context:', process.type);
+console.log('✅ Node Integration aktiv:', typeof require !== 'undefined');
 
 // Da contextIsolation: false ist, können wir direkt auf window zugreifen
 window.api = {
@@ -118,5 +122,9 @@ window.api = {
     ipcRenderer.removeAllListeners(channel);
   }
 };
+
+console.log('✅ window.api vollständig konfiguriert');
+console.log('✅ Verfügbare API-Methoden:', Object.keys(window.api).length);
+console.log('🎯 === PRELOAD.JS ERFOLGREICH ABGESCHLOSSEN ===');
 
 console.log('✅ window.api exposed successfully via preload.js');

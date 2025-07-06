@@ -1,0 +1,27 @@
+
+🎯 === ELECTRON KONFIGURATION WIEDERHERGESTELLT ===
+
+✅ KORREKTE KONFIGURATION:
+- main.js: nodeIntegration: true, contextIsolation: false
+- admin.js: Gleiche webPreferences wie main window
+- preload.js: Vollständige window.api mit Debug-Logs
+- HTML: Keine direkten Script-Fixes mehr
+
+🚀 APP STATUS:
+- Electron-App läuft erfolgreich
+- Database initialisiert
+- IPC-Handler registriert
+- Backend-Tests erfolgreich
+
+🔧 NÄCHSTE SCHRITTE:
+1. Öffnen Sie die laufende Electron-App
+2. Drücken Sie F12 für Developer Tools
+3. Schauen Sie in die Console nach preload.js Logs
+4. Testen Sie manuell: test@sunshin3.pro / test123
+
+📋 ERWARTETE LOGS:
+'🚀 === PRELOAD.JS GESTARTET ==='
+'✅ window.api vollständig konfiguriert'
+
+===================================
+
