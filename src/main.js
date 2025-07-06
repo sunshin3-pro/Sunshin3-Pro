@@ -267,16 +267,6 @@ function setupMockIPC() {
   
   ipcMain.handle('user-logout', async () => ({ success: true }));
   
-  // Mock Language functions
-  ipcMain.handle('save-language', async (event, language) => {
-    console.log('🧪 Mock save language:', language);
-    return { success: true };
-  });
-  
-  ipcMain.handle('get-language', async () => {
-    return 'de';
-  });
-  
   console.log('✅ Mock IPC handlers set up');
 }
 
