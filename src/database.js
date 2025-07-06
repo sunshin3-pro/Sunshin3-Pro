@@ -26,6 +26,13 @@ async function initDatabase() {
       await createInitialAdmin();
     }
     
+    // Prüfe ob Test-Benutzer existiert
+    const testUser = db.prepare('SELECT * FROM users WHERE email = ?').get('test@sunshin3.pro');
+    if (!testUser) {
+      // Erstelle Test-Benutzer
+      await createTestUser();
+    }
+    
     console.log('Datenbank erfolgreich initialisiert');
     return true;
   } catch (error) {
