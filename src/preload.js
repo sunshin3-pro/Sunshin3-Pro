@@ -114,4 +114,6 @@ window.api = {
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   }
-});
+};
+
+console.log('✅ window.api exposed successfully via preload.js');
