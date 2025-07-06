@@ -1139,61 +1139,171 @@ function setupIPC() {
     }
   });
 
-  // Email
-  ipcMain.handle('send-invoice-email', async (event, invoiceId, recipient) => {
+  // Email - PROFESSIONAL BUSINESS EMAIL SYSTEM
+  ipcMain.handle('send-invoice-email', async (event, invoiceId, emailData) => {
     try {
       const userId = getCurrentUserId();
       if (!userId) {
         return { success: false, error: 'Nicht angemeldet' };
       }
 
-      const settings = db.prepare('SELECT * FROM settings WHERE user_id = ? AND key LIKE "smtp_%"').all(userId);
+      // Get user's SMTP settings
+      const smtpSettings = db.prepare('SELECT * FROM settings WHERE user_id = ? AND key LIKE "smtp_%"').all(userId);
       const smtpConfig = {};
-      settings.forEach(setting => {
+      smtpSettings.forEach(setting => {
         const key = setting.key.replace('smtp_', '');
         smtpConfig[key] = setting.value;
       });
       
       if (!smtpConfig.host || !smtpConfig.user) {
-        return { success: false, error: 'E-Mail-Einstellungen nicht konfiguriert' };
+        return { success: false, error: 'E-Mail-Einstellungen nicht konfiguriert. Bitte konfigurieren Sie SMTP in den Einstellungen.' };
+      }
+
+      // Get invoice details
+      const invoice = db.prepare(`
+        SELECT i.*, c.*, u.company_name as user_company, u.first_name as user_first_name, u.last_name as user_last_name
+        FROM invoices i
+        LEFT JOIN customers c ON i.customer_id = c.id
+        LEFT JOIN users u ON i.user_id = u.id
+        WHERE i.id = ? AND i.user_id = ?
+      `).get(invoiceId, userId);
+
+      if (!invoice) {
+        return { success: false, error: 'Rechnung nicht gefunden' };
+      }
+
+      // Generate PDF
+      const pdfResult = await ipcMain.handle('generate-invoice-pdf', null, invoiceId);
+      if (!pdfResult.success) {
+        return { success: false, error: 'PDF konnte nicht erstellt werden: ' + pdfResult.error };
       }
 
       const transporter = nodemailer.createTransporter({
         host: smtpConfig.host,
-        port: smtpConfig.port || 587,
+        port: parseInt(smtpConfig.port) || 587,
         secure: smtpConfig.secure === 'true',
         auth: {
           user: smtpConfig.user,
           pass: smtpConfig.password
         }
       });
+
+      // PROFESSIONAL EMAIL TEMPLATES
+      const customerName = invoice.company_name || `${invoice.first_name} ${invoice.last_name}`;
+      const senderName = invoice.user_company || `${invoice.user_first_name} ${invoice.user_last_name}`;
       
-      const pdfResult = await ipcMain.handle('generate-invoice-pdf', null, invoiceId);
-      if (!pdfResult.success) throw new Error(pdfResult.error);
+      const htmlTemplate = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .header { background: #f8f9fa; padding: 20px; border-left: 4px solid #007bff; }
+            .content { padding: 20px; }
+            .invoice-details { background: #e9ecef; padding: 15px; border-radius: 5px; margin: 15px 0; }
+            .footer { background: #f8f9fa; padding: 15px; font-size: 12px; color: #6c757d; }
+            .amount { font-size: 18px; font-weight: bold; color: #28a745; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>Rechnung ${invoice.invoice_number}</h2>
+            <p>von ${senderName}</p>
+          </div>
+          
+          <div class="content">
+            <p>Sehr geehrte Damen und Herren,</p>
+            <p>anbei erhalten Sie die Rechnung ${invoice.invoice_number} vom ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}.</p>
+            
+            <div class="invoice-details">
+              <strong>Rechnungsdetails:</strong><br>
+              Rechnungsnummer: ${invoice.invoice_number}<br>
+              Rechnungsdatum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}<br>
+              Fälligkeitsdatum: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}<br>
+              <span class="amount">Gesamtbetrag: €${parseFloat(invoice.total).toFixed(2)}</span>
+            </div>
+            
+            <p>Bitte überweisen Sie den Betrag bis zum <strong>${new Date(invoice.due_date).toLocaleDateString('de-DE')}</strong>.</p>
+            
+            <p>Bei Fragen stehen wir Ihnen gerne zur Verfügung.</p>
+            
+            <p>Mit freundlichen Grüßen<br>
+            ${senderName}</p>
+          </div>
+          
+          <div class="footer">
+            <p>Diese E-Mail wurde automatisch von Sunshin3 Invoice Pro generiert.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textTemplate = `
+Rechnung ${invoice.invoice_number}
+
+Sehr geehrte Damen und Herren,
+
+anbei erhalten Sie die Rechnung ${invoice.invoice_number} vom ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}.
+
+Rechnungsdetails:
+- Rechnungsnummer: ${invoice.invoice_number}
+- Rechnungsdatum: ${new Date(invoice.invoice_date).toLocaleDateString('de-DE')}
+- Fälligkeitsdatum: ${new Date(invoice.due_date).toLocaleDateString('de-DE')}
+- Gesamtbetrag: €${parseFloat(invoice.total).toFixed(2)}
+
+Bitte überweisen Sie den Betrag bis zum ${new Date(invoice.due_date).toLocaleDateString('de-DE')}.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+${senderName}
+      `;
       
-      const info = await transporter.sendMail({
-        from: smtpConfig.user,
-        to: recipient,
-        subject: 'Ihre Rechnung',
-        text: 'Anbei finden Sie Ihre Rechnung.',
+      const mailOptions = {
+        from: `"${senderName}" <${smtpConfig.user}>`,
+        to: emailData.recipient || invoice.email,
+        subject: emailData.subject || `Rechnung ${invoice.invoice_number} von ${senderName}`,
+        text: emailData.message || textTemplate,
+        html: htmlTemplate,
         attachments: [{
-          filename: path.basename(pdfResult.path),
+          filename: pdfResult.filename || `rechnung_${invoice.invoice_number}.pdf`,
           path: pdfResult.path
         }]
-      });
+      };
+
+      const info = await transporter.sendMail(mailOptions);
       
-      return { success: true, messageId: info.messageId };
+      // Log the email activity
+      db.prepare(`
+        INSERT INTO email_logs (user_id, invoice_id, recipient, subject, status, message_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `).run(userId, invoiceId, mailOptions.to, mailOptions.subject, 'sent', info.messageId);
+      
+      // Update invoice status if it was draft
+      if (invoice.status === 'draft') {
+        db.prepare('UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .run('sent', invoiceId);
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId, 
+        recipient: mailOptions.to,
+        pdfPath: pdfResult.path
+      };
     } catch (error) {
+      console.error('Email sending error:', error);
       return { success: false, error: error.message };
     }
   });
 
-  // Test Email Connection
+  // SMTP Configuration Test
   ipcMain.handle('test-email-connection', async (event, config) => {
     try {
       const transporter = nodemailer.createTransporter({
         host: config.host,
-        port: config.port,
+        port: parseInt(config.port) || 587,
         secure: config.secure === 'true',
         auth: {
           user: config.user,
@@ -1202,7 +1312,42 @@ function setupIPC() {
       });
       
       await transporter.verify();
-      return { success: true, message: 'E-Mail Verbindung erfolgreich!' };
+      return { success: true, message: 'E-Mail Verbindung erfolgreich getestet!' };
+    } catch (error) {
+      return { success: false, error: `Verbindungstest fehlgeschlagen: ${error.message}` };
+    }
+  });
+
+  // Save SMTP Settings
+  ipcMain.handle('save-smtp-settings', async (event, settings) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return { success: false, error: 'Nicht angemeldet' };
+      }
+
+      const settingsToSave = {
+        'smtp_host': settings.host,
+        'smtp_port': settings.port,
+        'smtp_secure': settings.secure,
+        'smtp_user': settings.user,
+        'smtp_password': settings.password
+      };
+
+      for (const [key, value] of Object.entries(settingsToSave)) {
+        const existing = db.prepare('SELECT id FROM settings WHERE user_id = ? AND key = ?')
+          .get(userId, key);
+        
+        if (existing) {
+          db.prepare('UPDATE settings SET value = ? WHERE user_id = ? AND key = ?')
+            .run(value, userId, key);
+        } else {
+          db.prepare('INSERT INTO settings (user_id, key, value) VALUES (?, ?, ?)')
+            .run(userId, key, value);
+        }
+      }
+
+      return { success: true, message: 'SMTP-Einstellungen gespeichert' };
     } catch (error) {
       return { success: false, error: error.message };
     }
